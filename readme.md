@@ -20,6 +20,7 @@ Created a data fetching function, to automate grabbing data from various sources
   * **Status:** Identified as a source, still waiting to make first contact.
 * NOAA - Storm Events Database
 * NWS directly (investigate what IEM provides as opposed to direct data.  IEM seems to indicate that they do a lot to clean the NWS data)
+* Drought Monitor - NOAA
 
 ##### Demographic Data
 
