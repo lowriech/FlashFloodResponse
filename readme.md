@@ -32,3 +32,7 @@ Created a data fetching function, to automate grabbing data from various sources
 * USGS (https://www.usgs.gov/core-science-systems/ngp/3dep/about-3dep-products-services)
 * NLCD
 * Remote Sensing
+
+### Technical ToDo
+* Add proper environment configuration (i.e. root directory)
+* Pros/Cons of QGIS tool?
