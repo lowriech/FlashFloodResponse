@@ -3,6 +3,7 @@ import requests
 from zipfile36 import ZipFile
 
 
+
 data_types = {
     "iowa_env_mesonet": {
         "base_url": "https://mesonet.agron.iastate.edu/pickup/wwa/{}"
@@ -25,8 +26,10 @@ def get_data(source, remote_identifier, local_identifier):
 
 
 
-class IowaEnvMeso:
-
+class DataSet:
+    '''This is a wrapper based on geopandas.
+    It takes a local path and constructs a GeoDataFrame,
+    allowing for easy data manipulation.'''
     def __init__(self, shp_data_path):
         self.data = gpd.read_file(shp_data_path)
 
@@ -34,7 +37,6 @@ class IowaEnvMeso:
         return self.shp[0]["properties"].keys()
 
     def get_data_by_values(self, keys):
-        buffer = []
         x = self.data
         for key, value in keys.items():
             x = x.loc[x[key] == value]
@@ -42,10 +44,9 @@ class IowaEnvMeso:
 
 
 
-# get_data("iowa_env_mesonet", "2019_tsmf_sbw.zip", "2019_tsmf_sbw")
 
 test_data = local_data_path + "iowa_env_mesonet/2019_tsmf_sbw/wwa_201901010000_201912312359.shp"
-x = IowaEnvMeso(test_data)
+x = DataSet(test_data)
 x.get_data_by_values({"PHENOM": "FF"})
 
 
