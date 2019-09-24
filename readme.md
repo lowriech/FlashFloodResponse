@@ -27,6 +27,7 @@ Created a data fetching function, to automate grabbing data from various sources
 
 * US Census / American Community Survey
 * CDC (https://www.cdc.gov/gis/geo-spatial-data.html)
+* ATSDR's GRASP - Social Vulnerability Index
 
 ##### Physical Data
 
