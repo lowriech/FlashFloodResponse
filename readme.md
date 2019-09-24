@@ -22,6 +22,7 @@ Created a data fetching function, to automate grabbing data from various sources
 * NWS directly (investigate what IEM provides as opposed to direct data.  IEM seems to indicate that they do a lot to clean the NWS data)
 * Drought Monitor - NOAA
 * Socioeconomic Data Center - SEDAC
+* National Housing Index Data
 
 ##### Demographic Data
 
