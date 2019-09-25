@@ -37,5 +37,7 @@ Created a data fetching function, to automate grabbing data from various sources
 * Remote Sensing
 
 ### Technical ToDo
+* Waze binding
+* Map output
 * Add proper environment configuration (i.e. root directory)
 * Pros/Cons of QGIS tool?
