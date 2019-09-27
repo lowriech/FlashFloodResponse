@@ -1,0 +1,5 @@
+# ignore a single file
+src/client_secret.json
+
+# ignore an entire directory
+/data/
