@@ -6,6 +6,10 @@ This repository is devoted to automating flash flood data analysis. It is focuse
 **Basic Workflow**
 Create bindings to particular data sources for easy, replicable analysis.  
 
+### Current Progress (9/27/2019):
+
+Binding for Waze data created using the Google Sheets API.
+
 ### Current Progress (9/20/2019):
 
 Created a data fetching function, to automate grabbing data from various sources.  Created some structure for local analysis.
@@ -37,7 +41,6 @@ Created a data fetching function, to automate grabbing data from various sources
 * Remote Sensing
 
 ### Technical ToDo
-* Waze binding
-* Map output
+* Waze binding cleanup and modulization
+* File management for Waze and IEM data
 * Add proper environment configuration (i.e. root directory)
-* Pros/Cons of QGIS tool?
