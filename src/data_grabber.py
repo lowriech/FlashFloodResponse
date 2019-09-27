@@ -73,6 +73,3 @@ def test_iowa_env_mesonet():
     y = gpd.read_file(test_data)
     print(y.head())
 
-
-
-test_waze()
