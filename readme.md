@@ -45,3 +45,4 @@ Created a data fetching function, to automate grabbing data from various sources
 * Geotemporal fuzzy join on the Waze reports and IEM Warnings
 * File management for Waze and IEM data
 * Add proper environment configuration (i.e. root directory)
+* Add unit tests
