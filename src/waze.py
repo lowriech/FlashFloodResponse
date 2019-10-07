@@ -6,6 +6,11 @@ import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import time
+from datetime import datetime
+import pandas as pd
+from geopandas import GeoDataFrame
+from shapely.geometry import Point
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
@@ -58,7 +63,7 @@ WAZE_REGISTRY = [
 ]
 
 def getWazeData(SPREADSHEET_ID = '1yeIgD2Dzb9TumUGLfixaVkdU_wU_lIB8_altNzVpxmY',
-                RANGE_NAMES=['FormResponses!Q6:Q100', 'FormResponses!T6:T100']):
+                RANGE_NAMES=['FormResponses!Q6:Q', 'FormResponses!T6:T']):
     """Shows basic usage of the Sheets API.
     Prints values from a sample spreadsheet.
     """
@@ -94,11 +99,53 @@ def getWazeData(SPREADSHEET_ID = '1yeIgD2Dzb9TumUGLfixaVkdU_wU_lIB8_altNzVpxmY',
                                      ranges=RANGE_NAMES).execute()
     return result
 
+def parseUrlList(unparsed_list):
+    url_list = []
+    for url in unparsed_list:
+        if len(url) > 0:
+            url_list.append(url[0])
+        else:
+            url_list.append("")
+    return url_list
+
+def parseTimeList(unparsed_list):
+    time_list = []
+    patterns = ['%m/%d/%Y %H:%M:%S',
+                '%m/%d/%y %H:%M:%S',
+                '%m/%d/%Y %H:%M',
+                '%m/%d/%y %H:%M']
+    for timestring in unparsed_list:
+        if len(timestring) > 0:
+            t = "NONE"
+            for p in patterns:
+                try:
+                    #t = time.mktime(time.strptime(timestring[0], p))
+                    t = time.strptime(timestring[0], p)
+                    t = datetime.fromtimestamp(time.mktime(t))
+                    break
+                except:
+                    continue
+            t_year = t.year
+            t_month = t.month
+            t_day = t.day
+            t_hour = t.hour
+            t_minute = t.minute
+            t_second = t.second
+            t_list = ['{:02d}'.format(i) for i in [t_year, t_month, t_day, t_hour, t_minute, t_second]]
+            t_string = "".join(t_list)
+            time_list.append(t_string)
+            if t == "NONE":
+                raise ValueError
+
+        else:
+            time_list.append("0")
+    return time_list
+
 def parseRawWazeData(data):
     return_buffer = []
     x = [col['values'] for col in data['valueRanges']]
-    url_list = [url[0] for url in x[0]]
-    time_list = [time[0] for time in x[1]]
+    url_list = parseUrlList(x[0])
+    time_list = parseTimeList(x[1])
     intermediate_list = list(zip(url_list, time_list))
 
     for i in intermediate_list:
@@ -115,9 +162,46 @@ def parseRawWazeData(data):
             pass
     return return_buffer
 
+def fetchAllWaze(local_data_path):
+    for event in WAZE_REGISTRY:
+        with open(local_data_path + "waze/waze_" + event["event"] + ".txt", "w") as out_file:
+            out_file.write(",".join(["lat", "lon", "time", "event"]) + "\n")
+            x = getWazeData(SPREADSHEET_ID=event["spreadsheet_id"])
+            x = parseRawWazeData(x)
+            for i in x:
+                out_file.write(",".join([i["lat"], i["lon"], i["time"], event["event"]])+"\n")
 
-for event in WAZE_REGISTRY:
-    x = getWazeData(SPREADSHEET_ID=event["spreadsheet_id"])
-    x = parseRawWazeData(x)
-    for i in x:
-        print(",".join([i["lat"], i["lon"], i["time"], event["event"]]))
+
+def getWazeAsDataFrame(file):
+    df = pd.read_csv(file)
+
+    geometry = [Point(xy) for xy in zip(df.lon, df.lat)]
+    crs = {'init': 'epsg:4326'}  # http://www.spatialreference.org/ref/epsg/2263/
+    return GeoDataFrame(df, crs=crs, geometry=geometry)
+
+
+def analyzeWaze_x_NWS(waze_gdf, nws_gdf):
+    waze_gdf['key'] = 0
+    waze_min_time = min(waze_gdf[waze_gdf['time'] != 0]['time'])
+    waze_max_time = max(waze_gdf[waze_gdf['time'] != 0]['time'])
+    print(waze_min_time)
+    print(waze_max_time)
+
+    nws_gdf['key'] = 0
+    nws_gdf = nws_gdf[nws_gdf["PHENOM"] == "FF"]
+    nws_gdf["ISSUED"] = nws_gdf["ISSUED"].astype(int) * 100
+    nws_gdf["EXPIRED"] = nws_gdf["EXPIRED"].astype(int) * 100
+    nws_gdf["INIT_ISS"] = nws_gdf["INIT_ISS"].astype(int) * 100
+    nws_gdf["INIT_EXP"] = nws_gdf["INIT_EXP"].astype(int) * 100
+    nws_gdf = nws_gdf[nws_gdf.ISSUED > waze_min_time][nws_gdf.ISSUED < waze_max_time]
+    print(nws_gdf)
+
+    waze_x_nws = waze_gdf.merge(nws_gdf, how='outer', on='key')
+    print(waze_x_nws)
+
+    out_buffer = []
+    # for index, row in waze_x_nws.iterrows():
+    #     row["warning_intersects"] = row["geometry_x"].intersects(row["geometry_y"])
+    #     out_buffer.append(row)
+
+    return out_buffer

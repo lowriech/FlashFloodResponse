@@ -3,6 +3,7 @@ import requests
 from zipfile36 import ZipFile
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from waze import fetchAllWaze, getWazeAsDataFrame, analyzeWaze_x_NWS
 
 
 
@@ -45,24 +46,6 @@ class DataSet:
         return x
 
 
-class Waze:
-    '''Keeping this as a separate class for now.
-    Eventually will abstract DataSet more throughly, and override classes'''
-    def __init__(self):
-        # use creds to create a client to interact with the Google Drive API
-        scope = ['https://spreadsheets.google.com/feeds']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('client_secret.json', scope)
-        client = gspread.authorize(creds)
-
-        # Find a workbook by name and open the first sheet
-        # Make sure you use the right name here.
-        sheet = client.open("Test-API").sheet1
-        self.sheet = sheet
-
-    def get_all_records(self):
-        return self.sheet.get_all_records()
-
-
 
 
 def test_iowa_env_mesonet():
@@ -73,3 +56,13 @@ def test_iowa_env_mesonet():
     y = gpd.read_file(test_data)
     print(y.head())
 
+def test_waze():
+    fetchAllWaze(local_data_path)
+
+
+#test_waze()
+x = getWazeAsDataFrame(local_data_path + "waze/waze_harvey.txt")
+y = DataSet(local_data_path + "iowa_env_mesonet/2017_tsmf_sbw/wwa_201701010000_201712312359.shp").data
+
+
+index = analyzeWaze_x_NWS(x, y)

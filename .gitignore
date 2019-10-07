@@ -3,3 +3,4 @@ src/client_secret.json
 
 # ignore an entire directory
 /data/
+/tmp/
