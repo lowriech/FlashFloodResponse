@@ -1,68 +1,132 @@
 import geopandas as gpd
+import os.path
+from os import walk
 import requests
 from zipfile36 import ZipFile
+from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from waze import fetchAllWaze, getWazeAsDataFrame, analyzeWaze_x_NWS
+from configuration import *
 
 
+STORM_REPORT_FF_KEYS = {"PHENOM": "FF"}
 
-data_types = {
-    "iowa_env_mesonet": {
-        "base_url": "https://mesonet.agron.iastate.edu/pickup/wwa/{}"
-    }
-}
+def get_dotshp_from_shpdir(shpdir):
+    for root, dirs, files in walk(shpdir):
+        for filename in files:
+            if filename.endswith(".shp"):
+                return filename
 
-local_data_path = "../data/"
+def get_remote_shp(url, data_type, identifier):
 
-def get_data(source, remote_identifier, local_identifier):
+    if not os.path.exists(DATA_PATH + data_type):
+        os.mkdir(DATA_PATH + data_type)
 
-    path = data_types[source]["base_url"].format(remote_identifier)
-    out_zip = local_data_path + "{s}/{id}".format(s=source, id=remote_identifier)
+    local_data_dir = DATA_PATH + data_type + "/" + identifier
 
-    with open(out_zip, "wb") as file:
-        r = requests.get(path)
+    if not os.path.exists(local_data_dir):
+        os.mkdir(local_data_dir)
+
+    zip_file_path = TMP_DIR + "/" + identifier + ".zip"
+
+    with open(zip_file_path, "wb") as file:
+        r = requests.get(url)
         file.write(r.content)
 
-    z = ZipFile(out_zip)
-    z.extractall(local_data_path + source + "/" + local_identifier)
+    z = ZipFile(zip_file_path)
+    z.extractall(local_data_dir)
+    return local_data_dir + "/" + get_dotshp_from_shpdir(local_data_dir)
 
 
+#TODO Abstract the commonalities of the Handlers and create a parent class
+class StormWarningHandler:
 
-class DataSet:
-    '''This is a wrapper based on geopandas.
-    It takes a local path and constructs a GeoDataFrame,
-    allowing for easy data manipulation.'''
-    def __init__(self, shp_data_path):
-        self.data = gpd.read_file(shp_data_path)
+    def __init__(self, local_shp_path=None):
+        self.local_shp_path = local_shp_path
+        self.gdf = None
 
-    def list_properties(self):
-        return self.shp[0]["properties"].keys()
+    def get_gdf(self):
+        self.gdf = gpd.read_file(self.local_shp_path)
 
-    def get_data_by_values(self, keys):
-        x = self.data
+    def get_data_by_values(self, keys=STORM_REPORT_FF_KEYS):
+        x = self.gdf
         for key, value in keys.items():
             x = x.loc[x[key] == value]
         return x
 
+    def fetch_storm_warnings(self, year):
+        url = "https://mesonet.agron.iastate.edu/pickup/wwa/{}_tsmf_sbw.zip".format(str(year))
+        self.local_shp_path = get_remote_shp(url, "storm_warnings", str(year))
+
+class StormReportHandler:
+
+    def __init__(self, local_shp_path=None):
+        self.local_shp_path = local_shp_path
+        self.gdf = None
+
+    def get_gdf(self):
+        self.gdf = gpd.read_file(self.local_shp_path)
+
+    def get_data_by_values(self, keys=STORM_REPORT_FF_KEYS):
+        x = self.gdf
+        for key, value in keys.items():
+            x = x.loc[x[key] == value]
+        return x
+
+    def construct_storm_report_url(self, t0, t1):
+        t0 = "year1={year1}&" \
+             "month1={month1}&" \
+             "day1={day1}&" \
+             "hour1={hour1}&" \
+             "minute1={minute1}&".format(year1=t0.year,
+                                         month1=t0.month,
+                                         day1=t0.day,
+                                         hour1=t0.hour,
+                                         minute1=t0.minute)
+
+        t1 = "year2={year2}&" \
+             "month2={month2}&" \
+             "day2={day2}&" \
+             "hour2={hour2}&" \
+             "minute2={minute2}&".format(year2=t1.year,
+                                         month2=t1.month,
+                                         day2=t1.day,
+                                         hour2=t1.hour,
+                                         minute2=t1.minute)
+
+        base_url = "https://mesonet.agron.iastate.edu/cgi-bin/" \
+                   "request/gis/watchwarn.py?&{t0}&{t1}".format(t0=t0,
+                                                                t1=t1)
+
+        return base_url
+
+    def construct_storm_report_identifier(self, t0, t1):
+        return str(t0.year) + str(t0.month) + str(t0.day) + "_" + \
+               str(t1.year) + str(t1.month) + str(t1.day)
+
+    def fetch_storm_reports(self, t0, t1):
+        storm_report_url = self.construct_storm_report_url(t0, t1)
+        identifier = self.construct_storm_report_identifier(t0, t1)
+        self.local_shp_path = get_remote_shp(storm_report_url, "storm_reports", identifier)
+
+
+def main():
+    time0 = datetime(2019, 10, 11, 4, 0)
+    time1 = datetime(2019, 10, 12, 4, 0)
+    SRH = StormReportHandler()
+    SRH.fetch_storm_reports(time0, time1)
+    SRH.get_gdf()
+    SR_FF = SRH.get_data_by_values()
+
+    SWH = StormWarningHandler()
+    SWH.fetch_storm_warnings(2019)
+    SWH.get_gdf()
+    SWH_FF = SWH.get_data_by_values()
+
+    return SR_FF, SWH_FF
+
+SR_FF, SWH_FF = main()
 
 
 
-def test_iowa_env_mesonet():
-
-    test_data = local_data_path + "iowa_env_mesonet/2019_tsmf_sbw/wwa_201901010000_201912312359.shp"
-    x = DataSet(test_data)
-    x.get_data_by_values({"PHENOM": "FF"})
-    y = gpd.read_file(test_data)
-    print(y.head())
-
-def test_waze():
-    fetchAllWaze(local_data_path)
-
-
-#test_waze()
-x = getWazeAsDataFrame(local_data_path + "waze/waze_harvey.txt")
-y = DataSet(local_data_path + "iowa_env_mesonet/2017_tsmf_sbw/wwa_201701010000_201712312359.shp").data
-
-
-index = analyzeWaze_x_NWS(x, y)

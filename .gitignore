@@ -1,6 +1,9 @@
 # ignore a single file
 src/client_secret.json
+src/configuration.py
+.idea
 
 # ignore an entire directory
 /data/
 /tmp/
+/.idea
