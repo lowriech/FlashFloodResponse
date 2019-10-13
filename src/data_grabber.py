@@ -9,7 +9,6 @@ from oauth2client.service_account import ServiceAccountCredentials
 from waze import fetchAllWaze, getWazeAsDataFrame, analyzeWaze_x_NWS
 from configuration import *
 
-
 STORM_REPORT_FF_KEYS = {"PHENOM": "FF"}
 
 def get_dotshp_from_shpdir(shpdir):
