@@ -41,8 +41,8 @@ Created a data fetching function, to automate grabbing data from various sources
 * Remote Sensing
 
 ### Technical ToDo
-* Waze binding cleanup and modulization
-* Geotemporal fuzzy join on the Waze reports and IEM Warnings
+* Create an abstract parent class for StormReportHandler and StormWarningHandler
+* Clean up Waze
+* Create some sort of Storm Handler that will be used for analysis methods
 * File management for Waze and IEM data
-* Add proper environment configuration (i.e. root directory)
-* Add unit tests
+* Add unit tests for all data handlers
