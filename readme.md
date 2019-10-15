@@ -6,6 +6,10 @@ This repository is devoted to automating flash flood data analysis. It is focuse
 **Basic Workflow**
 Create bindings to particular data sources for easy, replicable analysis.  
 
+### Current Progress (10/15/2019):
+
+Completed handlers for NWS Storm Reports and Storm Warnings, and script to pull Waze VEOCs.  Built a file system / url request manager - this enables all of the analysis we do to be agnostic of data source or storm, and the application will handle if we need to fetch new data.  Starting time-analysis for Waze and NWS, starting with how frequently Waze and NWS align/don't align.  Starting to look for Socioeconomic data.
+
 ### Current Progress (9/27/2019):
 
 Binding for Waze data created using the Google Sheets API.
