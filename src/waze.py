@@ -8,9 +8,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import time
 from datetime import datetime
-import pandas as pd
-from geopandas import GeoDataFrame
-from shapely.geometry import Point
+
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
@@ -171,13 +169,6 @@ def fetchAllWaze(local_data_path):
             for i in x:
                 out_file.write(",".join([i["lat"], i["lon"], i["time"], event["event"]])+"\n")
 
-
-def getWazeAsDataFrame(file):
-    df = pd.read_csv(file)
-
-    geometry = [Point(xy) for xy in zip(df.lon, df.lat)]
-    crs = {'init': 'epsg:4326'}  # http://www.spatialreference.org/ref/epsg/2263/
-    return GeoDataFrame(df, crs=crs, geometry=geometry)
 
 
 def analyzeWaze_x_NWS(waze_gdf, nws_gdf):
