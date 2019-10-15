@@ -23,11 +23,10 @@ Created a data fetching function, to automate grabbing data from various sources
 ##### Forecast and Warnings
 
 * Iowa Environmental Mesonet
-  * **Status:** Site identified, binding created to pull shapefiles and analyze.
+  * **Status:** Handler created
 * Waze
-  * **Status:** Identified as a source, still waiting to make first contact.
+  * **Status:** Handler created
 * NOAA - Storm Events Database
-* NWS directly (investigate what IEM provides as opposed to direct data.  IEM seems to indicate that they do a lot to clean the NWS data)
 * Drought Monitor - NOAA
 * Socioeconomic Data Center - SEDAC
 * National Housing Index Data
@@ -46,7 +45,6 @@ Created a data fetching function, to automate grabbing data from various sources
 
 ### Technical ToDo
 * Create an abstract parent class for StormReportHandler and StormWarningHandler
+* Begin time-series / analysis objects
 * Clean up Waze
-* Create some sort of Storm Handler that will be used for analysis methods
-* File management for Waze and IEM data
 * Add unit tests for all data handlers
