@@ -46,6 +46,6 @@ Created a data fetching function, to automate grabbing data from various sources
 
 ### Technical ToDo
 * Create an abstract parent class for StormReportHandler and StormWarningHandler
-* Begin time-series / analysis objects
+* Begin time-series / analysis objects.  Kernel Density Smoothing to determine the time density of reports in a given area.
 * Clean up Waze
 * Add unit tests for all data handlers
