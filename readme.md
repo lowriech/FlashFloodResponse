@@ -27,6 +27,7 @@ Created a data fetching function, to automate grabbing data from various sources
 * Waze
   * **Status:** Handler created
 * NOAA - Storm Events Database
+* National Hurricane Center
 * Drought Monitor - NOAA
 * Socioeconomic Data Center - SEDAC
 * National Housing Index Data
