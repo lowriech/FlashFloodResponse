@@ -18,7 +18,7 @@ Upcoming support:
 Eventual support:
 - Environmental vulnerability indicators 
 
-**Geographic Analysis**
+**Geographic Analysis**\n
 Geographic analysis is being built out using geopandas (pandas + shapely).  These will be configured to test SoVI scores for a particular reporting region. 
 
 The initial questions being asked are:
@@ -26,7 +26,7 @@ The initial questions being asked are:
 - how does Waze (an example of a crowdsourced data platform with storm warning support) compare in reporting to the NWS, by space and time?
 - how can risk messaging be improved for at-risk communities?
 
-**Geographic Data Products**
+**Geographic Data Products**\n
 Production maps will be created using a QGIS interface, and potentially by hosting a web map.  There is termendous information that says that risk management tools must be built with support from end-users.  What this looks like exactly in our case is yet to be determined.  
 
 
