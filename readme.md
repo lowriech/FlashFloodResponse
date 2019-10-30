@@ -1,52 +1,57 @@
-## Flash Flood Analysis
+## Flash Flood Vulnerability Analysis.
 
 **Summary**
-This repository is devoted to automating flash flood data analysis. It is focused on creating modular and flexible attachments to physical data (i.e. topography, land use, and precipitation), forecast and warning data (i.e. NWS forecasts and crowd-sourced storm observations), and demographic data (i.e. census data, at-risk populations, and disaster response preparedness).
+This repository is devoted to automating analysis of Flash Flood reportings and warning issuance.  Its primary goal is to:
+- handle the management of local data and necessary API calls
+- enable geographic analysis
+- host the creation of geographic data products and risk assessment tools
 
-**Basic Workflow**
-Create bindings to particular data sources for easy, replicable analysis.  
+**Data Management**
+Current support:
+- NWS Warnings
+- NWS Storm Reports
+- Waze
 
-### Current Progress (10/15/2019):
+Upcoming support:
+- Social Vulnerability Index (SoVI) factors from the US Census / American Community Survey
 
-Completed handlers for NWS Storm Reports and Storm Warnings, and script to pull Waze VEOCs.  Built a file system / url request manager - this enables all of the analysis we do to be agnostic of data source or storm, and the application will handle if we need to fetch new data.  Starting time-analysis for Waze and NWS, starting with how frequently Waze and NWS align/don't align.  Starting to look for Socioeconomic data.
+Eventual support:
+- Environmental vulnerability indicators 
 
-### Current Progress (9/27/2019):
+**Geographic Analysis**
+Geographic analysis is being built out using geopandas (pandas + shapely).  These will be configured to test SoVI scores for a particular reporting region. 
 
-Binding for Waze data created using the Google Sheets API.
+The initial questions being asked are:
+- is there socioeconomic bias in storm warning issuance?
+- how does Waze (an example of a crowdsourced data platform with storm warning support) compare in reporting to the NWS, by space and time?
+- how can risk messaging be improved for at-risk communities?
 
-### Current Progress (9/20/2019):
+**Geographic Data Products**
+Production maps will be created using a QGIS interface, and potentially by hosting a web map.  There is termendous information that says that risk management tools must be built with support from end-users.  What this looks like exactly in our case is yet to be determined.  
 
-Created a data fetching function, to automate grabbing data from various sources.  Created some structure for local analysis.
 
-#### Sources
+#### Technical Notes
 
-##### Forecast and Warnings
+**Current State**
+* Began time-series analysis, developing several scores per geographic region for Waze reports.  Waze reports per polygon, time and space density
+* Began output creation to QGIS
 
-* Iowa Environmental Mesonet
-  * **Status:** Handler created
-* Waze
-  * **Status:** Handler created
+**Immediately Next Up**
+* Create attachments for US Census and American Community Survey
+* Develop SoVI scores
+* Create QGIS Processing Script to load and visualize the data
+
+**And then**
+* Add unit tests for all data handlers
+
+**Future**
+* Interactive mapping, to interact with the statistical outputs (maybe Tableau)
+
+**Potential Sources**
 * NOAA - Storm Events Database
 * National Hurricane Center
-* Drought Monitor - NOAA
 * Socioeconomic Data Center - SEDAC
 * National Housing Index Data
-* Look into Particularly Dangerous Situation Warnings.  These exist for tornados, but not yet for floods.
-
-##### Demographic Data
-
-* US Census / American Community Survey
 * CDC (https://www.cdc.gov/gis/geo-spatial-data.html)
 * ATSDR's GRASP - Social Vulnerability Index
-
-##### Physical Data
-
-* USGS (https://www.usgs.gov/core-science-systems/ngp/3dep/about-3dep-products-services)
-* NLCD
-* Remote Sensing
-
-### Technical ToDo
-* Create an abstract parent class for StormReportHandler and StormWarningHandler
-* Begin time-series / analysis objects.  Kernel Density Smoothing to determine the time density of reports in a given area.
-* Clean up Waze
-* Add unit tests for all data handlers
+* Particularly Dangerous Situation Warnings (tornados, but may have a parallel for flash floods).
