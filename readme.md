@@ -23,7 +23,7 @@ Geographic analysis is being built out using geopandas (pandas + shapely).  Thes
 
 The initial questions being asked are:
 - is there socioeconomic bias in storm warning issuance?
-- how does Waze (an example of a crowdsourced data platform with storm warning support) compare in reporting to the NWS, by space and time?
+- how does Waze (an example of a crowdsourced data platform with storm warning support) compare in reporting to the NWS, by space and time?  How can Waze, and other data like it, be used to augment the NWS?
 - how can risk messaging be improved for at-risk communities?
 
 ### Geographic Data Products
