@@ -7,6 +7,9 @@ from zipfile36 import ZipFile
 from datetime import datetime, timedelta
 from shapely.geometry import Point
 
+import seaborn as sbn
+import matplotlib.pyplot as plt
+
 from configuration import *
 from utils import *
 
@@ -222,6 +225,9 @@ class GeographyHandler(AbstractHandler):
         self.gdf = gpd.read_file(ZCTA_PATH)
 
 
+
+# TODO: Currently this is hardcoded for one particular census shapefile.
+#  Need to make it abstract so that you initiate based on particular columns
 class DataHolder:
 
     def __init__(self, storm, environment=SHP_TMP, geographies = GeographyHandler()):
@@ -253,31 +259,46 @@ class DataHolder:
         self.waze.gdf.to_file(os.path.join(self.environment, self.name + "_waze.shp"))
 
     def get_waze_vs_warnings_view1(self):
-        waze_warnings = gpd.sjoin(self.waze, self.storm_warnings, how="left", op="intersects")
+        waze_warnings = gpd.sjoin(self.waze.gdf, self.storm_warnings.gdf, how="left", op="intersects")
         waze_warnings["ISSUED"] = np.where(waze_warnings["ISSUED"].isnull(), -1, waze_warnings["ISSUED"])
         waze_warnings["EXPIRED"] = np.where(waze_warnings["EXPIRED"].isnull(), -1, waze_warnings["EXPIRED"])
         waze_warnings["time_overlap"] = np.where(
             (waze_warnings["ISSUED"] < waze_warnings["time"]) & (waze_warnings["time"] < waze_warnings["EXPIRED"]), 1,
             0)
-        waze_warnings.to_file(os.path.join(self.environment, self.name + "_view1.shp"))
         return waze_warnings
 
-    def create_kde(self):
-        pass
+    def get_waze_points_and_coverage(self):
+        x = self.get_waze_vs_warnings_view1()
+        y = x.groupby(by=['lat', 'lon', 'time'])['time_overlap'].max().reset_index(name='has_overlap')
+        # Geopandas doesn't support groupby in a great way, so currently need to re-transform to GDF\
+        y = gpd.GeoDataFrame(
+            y, geometry=gpd.points_from_xy(y.lon, y.lat))
+        y.to_file(os.path.join(self.environment, self.name + "_waze_vs_warning.shp"))
+        return y
+
+    def get_geographies_and_waze_times(self):
+        return gpd.sjoin(self.geographies.gdf, self.get_waze_points_and_coverage(), how="left", op="intersects")
+
+    def construct_zcta_summary(self):
+        y = self.get_geographies_and_waze_times()
+        pov = self.geographies.gdf[["ZCTA5", "PercPov"]].set_index("ZCTA5")
+        x = y.groupby('ZCTA5')['time']
+        x_counts = x.count().reset_index(name="count")["count"]
+        x = x.apply(list).reset_index(name="times")
+        x["counts"] = x_counts
+        x.set_index("ZCTA5")
+        x.merge(pov)
+        return x
+
+    def plot_time_density_for_zcta(self, zcta):
+        zcta = str(zcta)
+        x = self.get_geographies_and_waze_times().groupby('ZCTA5')['time'].apply(list).reset_index(name='times')
+        times = x[x["ZCTA5"] == zcta]['times'].values[0]
+        sbn.set_style('darkgrid')
+        sbn.distplot(times)
+        plt.show()
 
 
-    @staticmethod
-    def plot_all_histograms(buffer, nrow=2, ncol=2):
-        ngraphs = len(buffer)
-        npages = ngraphs // (nrow*ncol)
-        for page in range(0, npages):
-            fig, axs = plt.subplots(nrow, ncol, sharey=True, tight_layout=True)
-            for r in range(0, nrow):
-                for c in range(0, ncol):
-                    index = page*nrow*ncol + r*ncol + c
-                    axs[r, c].hist(buffer[index][1], bins=10)
-                    axs[r, c].set_title(buffer[index][0])
-                    axs[r, c].xaxis.set_major_formatter(mdates.DateFormatter('%m/%d - %H'))
-            plt.show()
-
-
+d = DataHolder("Harvey")
+z_sum = d.construct_zcta_summary()
+print(z_sum)
