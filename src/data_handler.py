@@ -15,11 +15,16 @@ from utils import *
 
 STORM_REPORT_FF_KEYS = {"PHENOM": "FF"}
 
+# ToDo: Create two time abstraction classes \
+# - Point Time Event (t)
+# - Duration Time Event (t_begin, t_end)
+# These will define what type of temporal event we are dealing with,
+# and the columns of the dataframe associated with t, t_begin, t_end
 
 class AbstractHandler:
     '''A parent handler for geospatial dataframes.
     This is intended to handle basic geodataframe operations.'''
-    def __init__(self, local_shp_path = None):
+    def __init__(self, local_shp_path=None):
         self.local_shp_path = local_shp_path
         self.gdf = None
         self.dir = os.path.join(DATA_DIRS[self.data_type], self.construct_identifier())
@@ -152,15 +157,61 @@ class StormReportHandler(NWSHandler):
                                         hour2=self.t1.hour,
                                         minute2=self.t1.minute)
 
-        base_url = "https://mesonet.agron.iastate.edu/cgi-bin/" \
-                   "request/gis/watchwarn.py?&{t0}&{t1}".format(t0=t0,
-                                                                t1=t1)
+
+        base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/watchwarn.py?" \
+                   "&{t0}&{t1}".format(t0=t0, t1=t1)
+
+        # base_url_point gives a point that may be more useful than the polygon, but need to investigate
+        # base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py?wfo%5B%5D=ALL" \
+        #            "&{t1}&{t2}".format(t0=t0, t1=t1)
 
         return base_url
 
     def construct_identifier(self):
         return str(self.t0.year) + str(self.t0.month) + str(self.t0.day) + "_" + \
                str(self.t1.year) + str(self.t1.month) + str(self.t1.day)
+
+
+# TODO: Implement StormReportPointHandler
+# class StormReportPointHandler(AbstractHandler):
+#
+#     def __init__(self, t0, t1, **kwargs):
+#         self.t0 = t0
+#         self.t1 = t1
+#         self.data_type = "STORM_REPORT_POINT"
+#         super(StormReportPointHandler, self).__init__(**kwargs)
+#
+#     def construct_remote_shp_path(self):
+#         t0 = "year1={year1}&" \
+#              "month1={month1}&" \
+#              "day1={day1}&" \
+#              "hour1={hour1}&" \
+#              "minute1={minute1}".format(year1=self.t0.year,
+#                                         month1=self.t0.month,
+#                                         day1=self.t0.day,
+#                                         hour1=self.t0.hour,
+#                                         minute1=self.t0.minute)
+#
+#         t1 = "year2={year2}&" \
+#              "month2={month2}&" \
+#              "day2={day2}&" \
+#              "hour2={hour2}&" \
+#              "minute2={minute2}".format(year2=self.t1.year,
+#                                         month2=self.t1.month,
+#                                         day2=self.t1.day,
+#                                         hour2=self.t1.hour,
+#                                         minute2=self.t1.minute)
+#
+#
+#         # base_url_point gives a point that may be more useful than the polygon, but need to investigate
+#         base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py?wfo%5B%5D=ALL" \
+#                    "&{t0}&{t1}".format(t0=t0, t1=t1)
+#
+#         return base_url
+#
+#     def construct_identifier(self):
+#         return str(self.t0.year) + str(self.t0.month) + str(self.t0.day) + "_" + \
+#                str(self.t1.year) + str(self.t1.month) + str(self.t1.day)
 
 
 def get_storm_reports(waze):
@@ -216,23 +267,24 @@ class WazeHandler:
 
 class GeographyHandler(AbstractHandler):
 
-    def __init__(self):
+    def __init__(self, local_shp_path=ZCTA_PATH):
         self.data_type = "GEOGRAPHY"
-        self.local_shp_path = ZCTA_PATH
+        self.local_shp_path = local_shp_path
         self.get_gdf()
 
-    def get_gdf(self, path=ZCTA_PATH):
-        self.gdf = gpd.read_file(ZCTA_PATH)
+    def get_gdf(self):
+        self.gdf = gpd.read_file(self.local_shp_path)
 
-
-
-# TODO: Currently this is hardcoded for one particular census shapefile.
-#  Need to make it abstract so that you initiate based on particular columns
+# TODO: Abstract DataHolder, into more of a generic analysis system
+# DataHolder should be completely independent of any particular handlers, etc.
 class DataHolder:
 
     def __init__(self, storm, environment=SHP_TMP, geographies = GeographyHandler()):
         self.name = storm
         self.environment = environment
+
+        # TODO: Currently this is hardcoded for one particular census shapefile.
+        #  Need to make it abstract so that you initiate based on particular columns
         self.geographies = geographies
 
         self.waze = WazeHandler(self.name)
@@ -286,8 +338,8 @@ class DataHolder:
         x_counts = x.count().reset_index(name="count")["count"]
         x = x.apply(list).reset_index(name="times")
         x["counts"] = x_counts
-        x.set_index("ZCTA5")
-        x.merge(pov)
+        x = x.set_index("ZCTA5")
+        x = x.merge(pov, left_index=True, right_index=True)
         return x
 
     def plot_time_density_for_zcta(self, zcta):
@@ -299,6 +351,20 @@ class DataHolder:
         plt.show()
 
 
-d = DataHolder("Harvey")
-z_sum = d.construct_zcta_summary()
-print(z_sum)
+if __name__ == "__main__":
+    i = DataHolder("Irma")
+    i.write_to_tmp()
+    i.waze
+    i.storm_reports
+    i.storm_warnings
+    i.geographies
+
+    print(i.extent)
+
+    irma_zcta_summary = i.construct_zcta_summary()
+    print(irma_zcta_summary)
+
+    waze_vs_warnings = i.get_waze_points_and_coverage()
+    print(waze_vs_warnings)
+
+    h = DataHolder("Harvey")
