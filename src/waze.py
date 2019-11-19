@@ -169,30 +169,3 @@ def fetchAllWaze(local_data_path):
             for i in x:
                 out_file.write(",".join([i["lat"], i["lon"], i["time"], event["event"]])+"\n")
 
-
-
-def analyzeWaze_x_NWS(waze_gdf, nws_gdf):
-    waze_gdf['key'] = 0
-    waze_min_time = min(waze_gdf[waze_gdf['time'] != 0]['time'])
-    waze_max_time = max(waze_gdf[waze_gdf['time'] != 0]['time'])
-    print(waze_min_time)
-    print(waze_max_time)
-
-    nws_gdf['key'] = 0
-    nws_gdf = nws_gdf[nws_gdf["PHENOM"] == "FF"]
-    nws_gdf["ISSUED"] = nws_gdf["ISSUED"].astype(int) * 100
-    nws_gdf["EXPIRED"] = nws_gdf["EXPIRED"].astype(int) * 100
-    nws_gdf["INIT_ISS"] = nws_gdf["INIT_ISS"].astype(int) * 100
-    nws_gdf["INIT_EXP"] = nws_gdf["INIT_EXP"].astype(int) * 100
-    nws_gdf = nws_gdf[nws_gdf.ISSUED > waze_min_time][nws_gdf.ISSUED < waze_max_time]
-    print(nws_gdf)
-
-    waze_x_nws = waze_gdf.merge(nws_gdf, how='outer', on='key')
-    print(waze_x_nws)
-
-    out_buffer = []
-    # for index, row in waze_x_nws.iterrows():
-    #     row["warning_intersects"] = row["geometry_x"].intersects(row["geometry_y"])
-    #     out_buffer.append(row)
-
-    return out_buffer

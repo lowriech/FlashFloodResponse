@@ -7,3 +7,5 @@ src/configuration.py
 /data/
 /tmp/
 /.idea
+/src/__pycache__/
+/venv/lib/python3.6/site-packages/

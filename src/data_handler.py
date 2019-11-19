@@ -13,21 +13,55 @@ import matplotlib.pyplot as plt
 from configuration import *
 from utils import *
 
+
 STORM_REPORT_FF_KEYS = {"PHENOM": "FF"}
 
-# ToDo: Create two time abstraction classes \
-# - Point Time Event (t)
-# - Duration Time Event (t_begin, t_end)
-# These will define what type of temporal event we are dealing with,
-# and the columns of the dataframe associated with t, t_begin, t_end
 
-class AbstractHandler:
+class AbstractTimePointEvent:
+
+    def __init__(self, t_field):
+        self.t_field = t_field
+
+    def clip_temporal(self, t0, t1):
+        self.gdf = self.gdf[self.gdf[self.t_field] < t1][self.gdf[self.t_field] > t0]
+
+    def get_temporal_extent(self, as_datetime = False):
+        min_time = min(self.gdf[self.gdf[self.t_field] != 0][self.t_field])
+        max_time = max(self.gdf[self.gdf[self.t_field] != 0][self.t_field])
+        if as_datetime:
+            return convert_numeric_to_datetime(min_time), \
+                   convert_numeric_to_datetime(max_time)
+        else:
+            return min_time, max_time
+
+
+class AbstractTimeDurationEvent:
+
+    def __init__(self, t_start_field, t_end_field):
+        self.t_start_field = t_start_field
+        self.t_end_field = t_end_field
+
+    def clip_temporal(self, t0, t1):
+        self.gdf = self.gdf[self.gdf[self.t_start_field] < t1][self.gdf[self.t_end_field] > t0]
+
+    def get_temporal_extent(self, as_datetime = False):
+        min_time = min(self.gdf[self.gdf[self.t_start_field] != 0][self.t_start_field])
+        max_time = max(self.gdf[self.gdf[self.t_end_field] != 0][self.t_end_field])
+        if as_datetime:
+            return convert_numeric_to_datetime(min_time), \
+                   convert_numeric_to_datetime(max_time)
+        else:
+            return min_time, max_time
+
+
+class AbstractGeoHandler:
     '''A parent handler for geospatial dataframes.
     This is intended to handle basic geodataframe operations.'''
-    def __init__(self, local_shp_path=None):
-        self.local_shp_path = local_shp_path
-        self.gdf = None
-        self.dir = os.path.join(DATA_DIRS[self.data_type], self.construct_identifier())
+    def __init__(self, **kwargs):
+        if "local_shp_path" in kwargs:
+            self.local_shp_path = kwargs.get("local_shp_path")
+        else:
+            self.local_shp_path = None
         self.get_gdf()
 
     def get_gdf(self):
@@ -45,17 +79,6 @@ class AbstractHandler:
         for key, value in keys.items():
             x = x.loc[x[key] == value]
         self.gdf = x
-
-    def get_local_data(self):
-        '''Look for data in local file system'''
-        tentative_shp = get_dotshp_from_shpdir(self.dir)
-        try:
-            self.local_shp_path = tentative_shp
-            print("Found local @ {}".format(tentative_shp))
-            self.gdf = gpd.read_file(tentative_shp)
-        except:
-            print("Local not found")
-            return None
 
     def create_spatial_index_fields(self):
         '''Potentially useful for spatial indexing and efficient calculation'''
@@ -80,6 +103,29 @@ class AbstractHandler:
         except ValueError:
             pass
 
+    def get_spatial_extent(self):
+        self.create_spatial_index_fields()
+        return ((min(self.gdf["minx"]), min(self.gdf["miny"])),
+                (max(self.gdf["maxx"]), max(self.gdf["maxy"])))
+
+
+class RemoteDataManager(AbstractGeoHandler):
+
+    def __init__(self, **kwargs):
+        self.dir = os.path.join(DATA_DIRS[self.data_type], self.construct_identifier())
+        super(RemoteDataManager, self).__init__(**kwargs)
+
+    def get_local_data(self):
+        '''Look for data in local file system'''
+        tentative_shp = get_dotshp_from_shpdir(self.dir)
+        try:
+            self.local_shp_path = tentative_shp
+            print("Found local @ {}".format(tentative_shp))
+            self.gdf = gpd.read_file(tentative_shp)
+        except:
+            print("Local not found")
+            return None
+
     def get_remote_shp(self):
         '''Find a remote shapefile.
         Must have implementations in a child class'''
@@ -99,19 +145,16 @@ class AbstractHandler:
         self.gdf = gpd.read_file(self.local_shp_path)
 
 
-class NWSHandler(AbstractHandler):
+class NWSHandler(RemoteDataManager, AbstractTimeDurationEvent):
     '''For processing GDFs related to the National Weather Service, via the Iowa Env Mesonet'''
     def __init__(self, **kwargs):
-        super(NWSHandler, self).__init__(**kwargs)
-        self.prep_data_variables()
+        RemoteDataManager.__init__(self, **kwargs)
+        AbstractTimeDurationEvent.__init__(self, t_start_field="ISSUED", t_end_field="EXPIRED")
 
     def prep_data_variables(self):
         self.gdf["ISSUED"] = self.gdf["ISSUED"].astype('int')
         self.gdf["EXPIRED"] = self.gdf["EXPIRED"].astype('int')
         self.gdf.to_crs({'init': 'epsg:4326'})
-
-    def clip_temporal(self, t0, t1):
-        self.gdf = self.gdf[self.gdf["ISSUED"] < t1][self.gdf["EXPIRED"] > t0]
 
 
 class StormWarningHandler(NWSHandler):
@@ -173,47 +216,9 @@ class StormReportHandler(NWSHandler):
 
 
 # TODO: Implement StormReportPointHandler
-# class StormReportPointHandler(AbstractHandler):
-#
-#     def __init__(self, t0, t1, **kwargs):
-#         self.t0 = t0
-#         self.t1 = t1
-#         self.data_type = "STORM_REPORT_POINT"
-#         super(StormReportPointHandler, self).__init__(**kwargs)
-#
-#     def construct_remote_shp_path(self):
-#         t0 = "year1={year1}&" \
-#              "month1={month1}&" \
-#              "day1={day1}&" \
-#              "hour1={hour1}&" \
-#              "minute1={minute1}".format(year1=self.t0.year,
-#                                         month1=self.t0.month,
-#                                         day1=self.t0.day,
-#                                         hour1=self.t0.hour,
-#                                         minute1=self.t0.minute)
-#
-#         t1 = "year2={year2}&" \
-#              "month2={month2}&" \
-#              "day2={day2}&" \
-#              "hour2={hour2}&" \
-#              "minute2={minute2}".format(year2=self.t1.year,
-#                                         month2=self.t1.month,
-#                                         day2=self.t1.day,
-#                                         hour2=self.t1.hour,
-#                                         minute2=self.t1.minute)
-#
-#
-#         # base_url_point gives a point that may be more useful than the polygon, but need to investigate
-#         base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py?wfo%5B%5D=ALL" \
-#                    "&{t0}&{t1}".format(t0=t0, t1=t1)
-#
-#         return base_url
-#
-#     def construct_identifier(self):
-#         return str(self.t0.year) + str(self.t0.month) + str(self.t0.day) + "_" + \
-#                str(self.t1.year) + str(self.t1.month) + str(self.t1.day)
+# base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py?wfo%5B%5D=ALL" \
 
-
+# TODO: Abstract this to not depend on Waze, just on space-time extent
 def get_storm_reports(waze):
     SRH_Buffer = []
 
@@ -234,14 +239,14 @@ def get_storm_reports(waze):
                               local_shp_path = out_path)
 
 
-class WazeHandler:
+class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent):
 
     def __init__(self, event_name):
         self.event_name = event_name
-        self.gdf = self.getWazeAsDataFrame()
-        self.min_time, self.max_time = self.get_min_max_times()
+        AbstractGeoHandler.__init__(self)
+        AbstractTimePointEvent.__init__(self, t_field="time")
 
-    def getWazeAsDataFrame(self):
+    def get_gdf(self):
         csv = os.path.join(WAZE_DIR, "waze_" + self.event_name + ".txt")
         df = pd.read_csv(csv)
 
@@ -249,43 +254,94 @@ class WazeHandler:
         crs = {'init': 'epsg:4326'}  # http://www.spatialreference.org/ref/epsg/2263/
         g = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         g["time"] = g["time"]//100
-        return gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
-
-    def get_min_max_times(self, as_datetime = False):
-        min_time = min(self.gdf[self.gdf['time'] != 0]['time'])
-        max_time = max(self.gdf[self.gdf['time'] != 0]['time'])
-        if as_datetime:
-            return convert_numeric_to_datetime(min_time), \
-                   convert_numeric_to_datetime(max_time)
-        else:
-            return min_time, max_time
-
-    def get_extent(self):
-        return ((min(self.gdf["lon"]), min(self.gdf["lat"])),
-                (max(self.gdf["lon"]), max(self.gdf["lat"])))
+        self.gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
 
 
-class GeographyHandler(AbstractHandler):
+class AbstractSpaceTimeFunctionality:
+    '''All functions currently return GDFs, as opposed to handlers.
+    This won't fundamentally block anything, but might get confusing.'''
+    def __init__(self):
+        pass
 
-    def __init__(self, local_shp_path=ZCTA_PATH):
-        self.data_type = "GEOGRAPHY"
-        self.local_shp_path = local_shp_path
-        self.get_gdf()
+    @staticmethod
+    def space_time_containment(time_point_handler, time_duration_handler):
+        '''Returns the spatial intersection, and whether or not each spatial intersection
+        is space-time contained or not in the "time_overlap" field'''
+        # For convenience and ease of reading.  These come from AbstractTimeDurationEvent
+        t0 = time_duration_handler.t_start_field
+        t1 = time_duration_handler.t_end_field
+        t = time_point_handler.t_field
 
-    def get_gdf(self):
-        self.gdf = gpd.read_file(self.local_shp_path)
+        # Create a spatial intersection
+        spatial_intersection = gpd.sjoin(time_point_handler.gdf, time_duration_handler.gdf, how="left", op="intersects")
+
+        # For points that had no spatial containment, set those fields to -1.  t_start_field
+        spatial_intersection[t0] = \
+            np.where(spatial_intersection[t0].isnull(),
+                     -1,
+                     spatial_intersection[t0])
+
+        # For points that had no spatial containment, set those fields to -1.  t_end_field
+        spatial_intersection[t1] = \
+            np.where(spatial_intersection[t1].isnull(),
+                     -1,
+                     spatial_intersection[t1])
+
+        # Create boolean field, time_overlap, for whether each point is xyt contained
+        spatial_intersection["time_overlap"] = np.where(
+            (spatial_intersection[t0] < spatial_intersection[t]) &
+            (spatial_intersection[t] < spatial_intersection[t1]), 1,
+            0)
+
+        return spatial_intersection
+
+    @staticmethod
+    def get_distinct_points_by_space_time_coverage(time_point_handler, time_duration_handler):
+        '''Returns whether or not each point has any containing duration event,
+        in the "has_overlap" column'''
+        z = AbstractSpaceTimeFunctionality.space_time_containment(time_point_handler, time_duration_handler)
+        z = z["time_overlap"].groupby(by=z.index).max().reset_index(name='has_overlap')[["has_overlap"]]
+        return time_point_handler.gdf.join(z)
+
+    @staticmethod
+    def count_points_per_geography(polygon_handler, point_handler, collect_on = None):
+        '''Count the number of points contained per polygonal geography.
+        Also returns a collected list of a field, if specified.'''
+        z = gpd.sjoin(polygon_handler.gdf, point_handler.gdf, how="left", op="intersects")
+        z_counts = z["index_right"].groupby(by=z.index).count().reset_index(name="count")[["count"]]
+        if collect_on is not None:
+            z_collect = z[collect_on].groupby(by=z.index).apply(list).reset_index(name="collection")[["collection"]]
+            z_counts = z_counts.join(z_collect)
+
+        return polygon_handler.gdf.join(z_counts)
+
+
+class AbstractOutputsAndGraphs:
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def plot_kde(values, **kwargs):
+        sbn.set_style('darkgrid')
+        sbn.distplot(values)
+        plt.show()
+
+    def plot_categorical_geo_data(self, data, category_column):
+        pass
+
 
 # TODO: Abstract DataHolder, into more of a generic analysis system
 # DataHolder should be completely independent of any particular handlers, etc.
 class DataHolder:
 
-    def __init__(self, storm, environment=SHP_TMP, geographies = GeographyHandler()):
+    def __init__(self, storm, environment=SHP_TMP, geography_path=ZCTA_PATH):
         self.name = storm
         self.environment = environment
 
         # TODO: Currently this is hardcoded for one particular census shapefile.
         #  Need to make it abstract so that you initiate based on particular columns
-        self.geographies = geographies
+        self.geographies = AbstractGeoHandler(local_shp_path=geography_path)
 
         self.waze = WazeHandler(self.name)
         self.extent = {
@@ -294,8 +350,10 @@ class DataHolder:
         }
 
         self.storm_reports = get_storm_reports(self.waze)
+        self.storm_reports.prep_data_variables()
         t = self.waze.get_min_max_times(as_datetime = True)[0]
         self.storm_warnings = StormWarningHandler(t.year)
+        self.storm_warnings.prep_data_variables()
         self.clip_context()
 
     def clip_context(self):
@@ -351,20 +409,22 @@ class DataHolder:
         plt.show()
 
 
-if __name__ == "__main__":
-    i = DataHolder("Irma")
-    i.write_to_tmp()
-    i.waze
-    i.storm_reports
-    i.storm_warnings
-    i.geographies
+# waze = WazeHandler("Harvey")
+# warn = StormWarningHandler(2017)
+# warn.prep_data_variables()
+# poly = AbstractGeoHandler(local_shp_path=ZCTA_PATH)
+#
+# z1 = AbstractSpaceTimeFunctionality.space_time_containment(waze, warn)
+# print(z1)
+#
+# z2 = AbstractSpaceTimeFunctionality.count_points_per_geography(poly, waze)
+# print(z2)
+#
+# z3 = AbstractSpaceTimeFunctionality.count_points_per_geography(poly, waze, collect_on="time")
+# print(z3)
 
-    print(i.extent)
-
-    irma_zcta_summary = i.construct_zcta_summary()
-    print(irma_zcta_summary)
-
-    waze_vs_warnings = i.get_waze_points_and_coverage()
-    print(waze_vs_warnings)
-
-    h = DataHolder("Harvey")
+#
+# for i in z3.sort_values(by="count", ascending = False).iterrows():
+# 	vals = i[1]["collection"]
+# 	AbstractOutputsAndGraphs.plot_kde(vals)
+#

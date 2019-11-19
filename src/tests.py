@@ -1,4 +1,4 @@
-from data_handler_DEPRECATED import *
+from data_handler import *
 from waze import *
 
 
