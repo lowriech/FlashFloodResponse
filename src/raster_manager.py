@@ -7,7 +7,11 @@ from rasterio.mask import mask
 '''Starting work on a straightforward OWSLib wrapper for accessing raster data.
 For more information, see https://geopython.github.io/OWSLib/'''
 
-# TODO In Progress
+# TODO:
+# In Progress
+# - This should go into a general Geographic Functionality folder
+# - General cleanup needed
+
 class RemoteRasterManager:
 
     def __init__(self, server, layer, name):

@@ -6,6 +6,9 @@ src/configuration.py
 # ignore an entire directory
 /data/
 /tmp/
+/literature/
+/outputs/
 /.idea
 /src/__pycache__/
 /venv/lib/python3.6/site-packages/
+/venv/bin/
