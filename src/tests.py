@@ -1,11 +1,12 @@
 from data_handler import *
 from waze import *
 
+#TODO: Robust Test Cases
 
 def test_waze():
     fetchAllWaze(DATA_PATH)
     for w in WAZE_REGISTRY:
-        data = DataHolder(w["event"])
+        data = StormDataHolder(w["event"])
 
 def test_storm_reports():
     time0 = datetime(2019, 10, 11, 4, 0)

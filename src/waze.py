@@ -9,6 +9,8 @@ from google.auth.transport.requests import Request
 import time
 from datetime import datetime
 
+'''This script parses raw Waze data from different prominent storms.
+Data was initially supplied for specific storms, but the end goal will be to live-stream Waze reports.'''
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
