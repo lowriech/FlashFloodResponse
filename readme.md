@@ -1,50 +1,39 @@
 ## Flash Flood Vulnerability Analysis.
 
 ### Summary
-This repository is devoted to automating analysis of Flash Flood reportings and warning issuance.  Its primary goal is to:
-- handle the management of local data and necessary API calls
-- enable geographic analysis
-- host the creation of geographic data products and risk assessment tools
+This repository is devoted to automating analysis of Flash Flood warning issuance, as part of the NASA Earth Observations project:
+- https://appliedsciences.nasa.gov/content/18-geogfrm-0006
 
-### Data Management
-Current support:
-- NWS Warnings
-- NWS Storm Reports
-- Waze
+It is intended to provide an abstract functionality to compare different spatial-temporal events (such as flash flood warnings and flood reports) to quantify the effectiveness of issued warnings.
+The initial use case of this is to compare flood reports from the navigation app *Waze* against the US National Weather Service (NWS).
+Waze data was initially supplied for several large storms (see WAZE_REGISTRY in waze.py file), but the end goal is to request a live feed of Waze reports.
 
-Upcoming support:
-- Social Vulnerability Index (SoVI) factors from the US Census / American Community Survey
+### Abstract Space-Time Functionality: Vector
+Holds classes for analysis of 2-D containment ("Does a storm report fall within an issued warning?"), which is enabled by several classes:
+- AbstractTimePointEvent, an event that happens at a point in time
+- AbstractTimeDurationEvent, an event that has a duration in time
+- AbstractGeoHandler, a wrapper on GeoPandas' GeoDataFrames
+- RemoteDataManager, which allows for basic URL construction to fetch remote data
 
-Eventual support:
-- Environmental vulnerability indicators 
+### In Progress: Social Vulnerability, Vector-Raster comparisons
+This will include functionality to ask aggregate questions about interaction between the vector classes described above, and rasters.  
+The initial use case of this is for demographic analysis of NWS Warnings ("Are warnings equally distributed, considering the underlying populations that are warned?")
 
-### Geographic Analysis
-Geographic analysis is being built out using geopandas (pandas + shapely).  These will be configured to test SoVI scores for a particular reporting region. 
+### Research Questions
+1. Vulnerability Analysis
+    1. Equity of coverage of NWS Warnings by impact and vulnerability/socioeconomic/demographic variables.  
+    2. Vulnerability will be informed by research in flooding, particularly by Alex de Sherbinin
+    3. Goal of integrating information for Impact Based Forecasting guidelines.
+    4. How does the vulnerability contained within NWS Warnings compare to the overall area’s vulnerability?
+2. Waze as an alternative reporting dataset
+    1. Does Waze represent gaps in NWS coverage?
+    2. Does NWS effectively capture high-volume Waze reports?
 
-The initial questions being asked are:
-- is there socioeconomic bias in storm warning issuance?
-- how does Waze (an example of a crowdsourced data platform with storm warning support) compare in reporting to the NWS, by space and time?  How can Waze, and other data like it, be used to augment the NWS?
-- how can risk messaging be improved for at-risk communities?
-
-### Geographic Data Products
-Production maps will be created using a QGIS interface, and potentially by hosting a web map.  There is termendous information that says that risk management tools must be built with support from end-users.  What this looks like exactly in our case is yet to be determined.  
-
-## Technical Notes
-
-**Current State**
-* Began time-series analysis, developing several scores per geographic region for Waze reports.  Waze reports per polygon, time and space density
-* Began output creation to QGIS
-
-**Immediately Next Up**
-* Create attachments for US Census and American Community Survey
-* Develop SoVI scores
-* Create QGIS Processing Script to load and visualize the data
-
-**And then**
-* Add unit tests for all data handlers
-
-**Future**
-* Interactive mapping, to interact with the statistical outputs (maybe Tableau)
+#### Future, as needed
+* An API for development of indices, such as Social Vulnerability Indices (SoVIs)
+* QGIS Processing Toolbox interface
+* Interactive mapping using React
+* Implement a PostGRES, PostGIS server
 
 **Potential Sources**
 * NOAA - Storm Events Database
