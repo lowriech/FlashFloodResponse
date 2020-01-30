@@ -19,3 +19,10 @@
 #     sbn.set_style('darkgrid')
 #     sbn.distplot(times)
 #     plt.show()
+#
+# def cdc_vector_to_raster():
+#     from data_handler import AbstractGeoHandler
+#     x = AbstractGeoHandler(
+#         local_shp_path='/Users/christopherjlowrie/Repos/FlashFloodResponse/data/cdc_sovi/SVI2016_US/SVI2016_US.shp'
+#     )
+#     return x.rasterize_from_template('RPL_THEMES')

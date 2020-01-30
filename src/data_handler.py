@@ -143,16 +143,15 @@ class StormDataHolder:
             "spatial": self.waze.get_spatial_extent()
         }
 
-        # TODO Probably not the cleanest way to handle the extents,
-        # but no harm and it will work for now
-        self.datetime_extent = {
+        # TODO Probably not the cleanest way to handle the extents, but no harm and it will work for now
+        self.spacetime_extent = {
             "temporal": self.waze.get_temporal_extent(as_datetime=True),
             "spatial": self.waze.get_spatial_extent()
         }
 
-        self.storm_reports = get_storm_reports(self.datetime_extent)
+        self.storm_reports = get_storm_reports(self.spacetime_extent)
         self.storm_reports.prep_data_variables()
-        self.storm_warnings = StormWarningHandler(self.datetime_extent["temporal"][0].year)
+        self.storm_warnings = StormWarningHandler(self.spacetime_extent["temporal"][0].year)
         self.storm_warnings.prep_data_variables()
         self.clip_context()
 

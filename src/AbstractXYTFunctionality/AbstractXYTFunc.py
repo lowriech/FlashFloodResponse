@@ -5,7 +5,7 @@ import os.path
 import requests
 from zipfile36 import ZipFile
 from datetime import datetime, timedelta
-from shapely.geometry import Point
+from shapely.geometry import Point, Polygon
 
 from configuration import *
 from utils import *
@@ -105,10 +105,18 @@ class AbstractGeoHandler:
         except ValueError:
             pass
 
-    def get_spatial_extent(self, buffer=0.01):
+    def get_spatial_extent(self, buffer=0.01, as_geometry=False):
         self.create_spatial_index_fields()
-        return ((min(self.gdf["minx"])-buffer, min(self.gdf["miny"])-buffer),
+        pts = ((min(self.gdf["minx"])-buffer, min(self.gdf["miny"])-buffer),
                 (max(self.gdf["maxx"])+buffer, max(self.gdf["maxy"])+buffer))
+        if as_geometry:
+            return Polygon([(pts[0][0], pts[0][1]),
+                     (pts[0][0], pts[1][1]),
+                     (pts[1][0], pts[1][1]),
+                     (pts[1][0], pts[0][1]),
+                     (pts[0][0], pts[0][1])])
+
+        return pts
 
     def get_gdf_by_directory(self, dir, traverse_subdirs=False):
         data = []
@@ -122,6 +130,23 @@ class AbstractGeoHandler:
                     for i in get_by_extension(p, ".shp"):
                         data.append(gpd.read_file(os.path.join(p, i)))
         self.gdf = pd.concat(data)
+
+    def rasterize_from_template(self, column_to_rasterize, template_path=RASTER_TEMPLATE):
+        import rasterio
+        from rasterio import features
+
+        out_fn = get_tmp_path(TMP_DIR)
+        rst = rasterio.open(template_path)
+        meta = rst.meta.copy()
+        meta.update(compress='lzw')
+
+        with rasterio.open(out_fn, 'w+', **meta) as out:
+            out_arr = out.read(1)
+            shapes = ((geom, value) for geom, value in zip(self.gdf.geometry, self.gdf[column_to_rasterize]))
+            burned = features.rasterize(shapes=shapes, fill=np.nan, out=out_arr, transform=out.transform)
+            out.write_band(1, burned)
+
+        return out_fn
 
     #TODO add an append_table function
 

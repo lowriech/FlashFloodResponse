@@ -2,6 +2,8 @@
 src/client_secret.json
 src/configuration.py
 .idea
+spring2020_ff_internship_lowrie.pages
+spring2020_ff_internship_lowrie.pdf
 
 # ignore an entire directory
 /data/

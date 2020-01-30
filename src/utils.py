@@ -17,3 +17,8 @@ def get_dotshp_from_shpdir(shpdir):
             if filename.endswith(".shp"):
                 print(root)
                 return os.path.join(root, filename)
+
+
+def get_tmp_path(base_dir):
+    import uuid
+    return os.path.join(base_dir, "tmp_" + str(uuid.uuid1()) + ".tif")
