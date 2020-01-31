@@ -149,8 +149,8 @@ class StormDataHolder:
             "spatial": self.waze.get_spatial_extent()
         }
 
-        self.storm_reports = get_storm_reports(self.spacetime_extent)
-        self.storm_reports.prep_data_variables()
+        # self.storm_reports = get_storm_reports(self.spacetime_extent)
+        # self.storm_reports.prep_data_variables()
         self.storm_warnings = StormWarningHandler(self.spacetime_extent["temporal"][0].year)
         self.storm_warnings.prep_data_variables()
         self.clip_context()

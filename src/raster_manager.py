@@ -7,7 +7,7 @@ import pandas as pd
 from rasterio.plot import show
 import matplotlib.pyplot as plt
 import numpy as np
-import utils
+from utils import get_tmp_path
 from shapely.geometry import mapping
 
 
@@ -43,9 +43,17 @@ class VectorRasterAssociation:
 
     def plot_master(self):
         master_copy = self.master_raster
-        fig, ax = plt.subplots(figsize=(10, 10))
-        rasterio.plot.show(master_copy.get_open_raster(), ax=ax, cmap='OrRd')
-        self.geometry.plot(ax=ax, facecolor='k', edgecolor='k', alpha=0.1)
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharex=True)
+        # Plot 1
+        rasterio.plot.show(master_copy.get_open_raster(), ax=ax1, cmap='OrRd')
+
+        # Plot 2
+        self.geometry.plot(ax=ax2, facecolor='k', edgecolor='k', alpha=0.15)
+
+        # Plot 3
+        rasterio.plot.show(master_copy.get_open_raster(), ax=ax3, cmap='OrRd')
+        self.geometry.plot(ax=ax3, facecolor='k', edgecolor='k', alpha=0.1)
+
         plt.show()
 
     def plot_association_by_index(self, index):
@@ -119,7 +127,7 @@ class RasterHandler:
             self.write_numpy_to_raster()
 
     def write_numpy_to_raster(self):
-        tmp_path = utils.get_tmp_path(TMP_DIR)
+        tmp_path = get_tmp_path(TMP_DIR, ".tif")
         with rasterio.open(
             tmp_path,
             'w',
