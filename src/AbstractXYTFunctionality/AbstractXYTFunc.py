@@ -6,7 +6,6 @@ import requests
 from zipfile36 import ZipFile
 from datetime import datetime, timedelta
 from shapely.geometry import Point, Polygon
-
 from configuration import *
 from utils import *
 
@@ -19,7 +18,7 @@ class AbstractTimePointEvent:
     def clip_temporal(self, t0, t1):
         self.gdf = self.gdf[self.gdf[self.t_field] < t1][self.gdf[self.t_field] > t0]
 
-    def get_temporal_extent(self, as_datetime = False):
+    def get_temporal_extent(self, as_datetime=False):
         min_time = min(self.gdf[self.gdf[self.t_field] != 0][self.t_field])
         max_time = max(self.gdf[self.gdf[self.t_field] != 0][self.t_field])
         if as_datetime:
@@ -58,7 +57,7 @@ class AbstractGeoHandler:
     def __init__(self, **kwargs):
         if "local_shp_path" in kwargs:
             self.local_shp_path = kwargs.get("local_shp_path")
-            self.get_gdf()
+            self.gdf = gpd.read_file(self.local_shp_path)
         elif "gdf" in kwargs:
             self.local_shp_path = None
             self.gdf = kwargs.get("gdf")
@@ -73,7 +72,7 @@ class AbstractGeoHandler:
 
     def get_gdf(self):
         '''Search for the GDF locally, if not found look for a remote file.'''
-        self.gdf = gpd.read_file(self.local_shp_path)
+        pass
 
     def cut_data_by_values(self, keys):
         '''Filter a dataframe by specific values'''
@@ -148,49 +147,85 @@ class AbstractGeoHandler:
 
         return out_fn
 
+    def get_reprojected_dataframe(self, crs):
+
+        return self.gdf.to_crs(crs)
+
     #TODO add an append_table function
 
 
 class RemoteDataManager(AbstractGeoHandler):
 
     def __init__(self, **kwargs):
-        self.dir = os.path.join(DATA_DIRS[self.data_type], self.construct_identifier())
+        self.dir = os.path.join(DATA_DIRS[self.configuration_lookup], self.construct_local_identifier())
+        if not os.path.exists(self.dir):
+            os.mkdir(self.dir)
+        print(self.dir)
         super(RemoteDataManager, self).__init__(**kwargs)
 
     def get_gdf(self):
         '''Search for the GDF locally, if not found look for a remote file.'''
         self.get_local_data()
         if self.gdf is None:
-            self.get_remote_shp()
+            self.get_remote_data()
 
     def get_local_data(self):
-        '''Look for data in local file system'''
-        tentative_shp = get_dotshp_from_shpdir(self.dir)
-        try:
-            self.local_shp_path = tentative_shp
-            print("Found local @ {}".format(tentative_shp))
-            self.gdf = gpd.read_file(tentative_shp)
-        except:
-            print("Local not found")
-            self.gdf = None
+        """Look for data in local file system"""
 
-    def get_remote_shp(self):
+        if self.file_type == ".geojson":
+            try:
+                print("Found local @ {}".format(self.get_local_path()))
+                self.gdf = gpd.read_file(self.get_local_path())
+            except:
+                self.gdf = None
+
+        elif self.file_type == ".zip":
+            tentative_shp = get_dotshp_from_shpdir(self.dir)
+            try:
+                print("Found local @ {}".format(tentative_shp))
+                self.gdf = gpd.read_file(tentative_shp)
+            except:
+                print("Local not found")
+                self.gdf = None
+
+    def get_local_path(self):
+        out = self.construct_local_identifier() + self.file_type
+        return os.path.join(self.dir, out)
+
+    def get_remote_data(self):
         '''Find a remote shapefile.
         Must have implementations in a child class'''
-        if not os.path.exists(self.dir):
-            os.mkdir(self.dir)
+        def extract_zip(file_path):
+            z = ZipFile(file_path)
+            z.extractall(self.dir)
+            self.local_shp_path = get_dotshp_from_shpdir(self.dir)
+            self.gdf = gpd.read_file(self.local_shp_path)
 
-        zip_name = self.construct_identifier() + ".zip"
-        zip_file_path = os.path.join(TMP_DIR, zip_name)
+        def extract_gjson(file_path):
+            self.gdf = gpd.read_file(file_path)
 
-        with open(zip_file_path, "wb") as file:
-            r = requests.get(self.construct_remote_shp_path())
+        extraction_dictionary = {
+            ".zip": extract_zip,
+            ".geojson": extract_gjson
+        }
+
+        file_path = self.get_local_path()
+        print(file_path)
+
+        with open(file_path, "wb") as file:
+            r = requests.get(self.construct_url())
+            # print(r.content)
             file.write(r.content)
 
-        z = ZipFile(zip_file_path)
-        z.extractall(self.dir)
-        self.local_shp_path = get_dotshp_from_shpdir(self.dir)
-        self.gdf = gpd.read_file(self.local_shp_path)
+        extraction_dictionary[self.file_type](file_path)
+
+    def construct_local_identifier(self):
+        """Overridden by child classes"""
+        pass
+
+    def construct_url(self):
+        """Overridden by child classes"""
+        pass
 
 
 class AbstractSpaceTimeFunctionality:
@@ -209,6 +244,7 @@ class AbstractSpaceTimeFunctionality:
 
         # Create a spatial intersection
         spatial_intersection = gpd.sjoin(time_point_handler.gdf, time_duration_handler.gdf, how="left", op="intersects")
+        return spatial_intersection
 
         # For points that had no spatial containment, set those fields to -1.  t_start_field
         spatial_intersection[t0] = \

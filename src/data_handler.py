@@ -7,106 +7,112 @@ from zipfile36 import ZipFile
 from datetime import datetime, timedelta
 from shapely.geometry import Point
 from AbstractXYTFunctionality.AbstractXYTFunc import *
-
 import seaborn as sbn
 import matplotlib.pyplot as plt
-
 from configuration import *
+from spatial_analytics import *
 from utils import *
 
 
-class NWSHandler(RemoteDataManager, AbstractTimeDurationEvent):
-    '''For processing GDFs related to the National Weather Service, via the Iowa Env Mesonet'''
-    def __init__(self, **kwargs):
-        RemoteDataManager.__init__(self, **kwargs)
-        AbstractTimeDurationEvent.__init__(self, t_start_field="ISSUED", t_end_field="EXPIRED")
+class NWS:
 
-    def prep_data_variables(self):
-        self.gdf["ISSUED"] = self.gdf["ISSUED"].astype('int')
-        self.gdf["EXPIRED"] = self.gdf["EXPIRED"].astype('int')
-        self.gdf.to_crs({'init': 'epsg:4326'})
+    def __init__(self):
+        pass
+
+    def construct_url(self):
+        t0 = str(self.t0.year) + str(self.t0.month).zfill(2) + str(self.t0.day).zfill(2)
+        t1 = str(self.t1.year) + str(self.t1.month).zfill(2) + str(self.t1.day).zfill(2)
+        base_url = self.base_url.format(t0=t0, t1=t1)
+
+        return base_url
+
+    def construct_local_identifier(self):
+        """For constructing a local identifier.  Both for saving remote files,
+        and for reducing the amount of remote fetching that has to be done"""
+
+        return str(self.t0.year) + \
+               str(self.t0.month).zfill(2) + \
+               str(self.t0.day).zfill(2) + \
+               str(self.t0.hour).zfill(2) + \
+               str(self.t0.minute).zfill(2) + "_" + \
+               str(self.t1.year) + \
+               str(self.t1.month).zfill(2) + \
+               str(self.t1.day).zfill(2) + \
+               str(self.t0.hour).zfill(2) + \
+               str(self.t0.minute).zfill(2)
+
+    def convert_numeric_to_datetime(self, x):
+        """This overwrites the blank function in AbstractTimePointEvent, which
+        allows for abstract time functionality"""
+
+        return datetime.strptime(x, '%Y-%m-%dT%H:%M:%S')
 
 
-class StormWarningHandler(NWSHandler):
-
-    def __init__(self, year, **kwargs):
-        self.year = year
-        self.data_type = "STORM_WARNING"
-        super(StormWarningHandler, self).__init__(**kwargs)
-
-    def construct_identifier(self):
-        return str(self.year)
-
-    def construct_remote_shp_path(self):
-        return "https://mesonet.agron.iastate.edu/pickup/wwa/{}_tsmf_sbw.zip".format(str(self.year))
-
-
-class StormReportHandler(NWSHandler):
+class StormWarningHandler(NWS, RemoteDataManager, AbstractTimeDurationEvent):
 
     def __init__(self, t0, t1, **kwargs):
         self.t0 = t0
         self.t1 = t1
-        self.data_type = "STORM_REPORT"
-        super(StormReportHandler, self).__init__(**kwargs)
+        self.configuration_lookup = "STORM_WARNING"
+        self.file_type = ".geojson"
+        self.base_url = 'https://mesonet.agron.iastate.edu/geojson/sbw.php?' \
+                        'sts={t0}&ets={t1}&wfos='
+        NWS.__init__(self)
+        RemoteDataManager.__init__(self, **kwargs)
+        AbstractTimeDurationEvent.__init__(self, t_start_field="issue", t_end_field="expire")
 
-    def construct_remote_shp_path(self):
-        t0 = "year1={year1}&" \
-             "month1={month1}&" \
-             "day1={day1}&" \
-             "hour1={hour1}&" \
-             "minute1={minute1}".format(year1=self.t0.year,
-                                        month1=self.t0.month,
-                                        day1=self.t0.day,
-                                        hour1=self.t0.hour,
-                                        minute1=self.t0.minute)
+    def prep_data(self):
+        """Called last in the initialization, this handles any adhoc data cleanup that is needed"""
 
-        t1 = "year2={year2}&" \
-             "month2={month2}&" \
-             "day2={day2}&" \
-             "hour2={hour2}&" \
-             "minute2={minute2}".format(year2=self.t1.year,
-                                        month2=self.t1.month,
-                                        day2=self.t1.day,
-                                        hour2=self.t1.hour,
-                                        minute2=self.t1.minute)
+        self.cut_data_by_values({"phenomena": "FF"})
+        self.gdf[self.t_start_field] = self.gdf[self.t_start_field].apply(
+            lambda t: self.convert_numeric_to_datetime(t)
+        )
+        self.gdf[self.t_end_field] = self.gdf[self.t_end_field].apply(
+            lambda t: self.convert_numeric_to_datetime(t)
+        )
 
 
-        base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/watchwarn.py?" \
-                   "&{t0}&{t1}".format(t0=t0, t1=t1)
+class StormReportPointHandler(NWS, RemoteDataManager, AbstractTimePointEvent, SpatialAnalytics):
 
-        # base_url_point gives a point that may be more useful than the polygon, but need to investigate
-        # base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py?wfo%5B%5D=ALL" \
-        #            "&{t1}&{t2}".format(t0=t0, t1=t1)
+    def __init__(self, t0, t1, **kwargs):
+        self.t0 = t0
+        self.t1 = t1
+        self.configuration_lookup = "STORM_REPORT_POINT"
+        self.file_type = ".geojson"
+        self.base_url = "https://mesonet.agron.iastate.edu/geojson/lsr.php?inc_ap=yes&" \
+                        "sts={t0}&ets={t1}&wfos="
+        NWS.__init__(self)
+        RemoteDataManager.__init__(self, **kwargs)
+        AbstractTimePointEvent.__init__(self, t_field="valid")
 
-        return base_url
+    def prep_data(self):
+        """Called last in the initialization, this handles any adhoc data cleanup that is needed"""
 
-    def construct_identifier(self):
-        return str(self.t0.year) + str(self.t0.month) + str(self.t0.day) + "_" + \
-               str(self.t1.year) + str(self.t1.month) + str(self.t1.day)
+        self.cut_data_by_values({"type": "F"})
+        self.gdf[self.t_field] = self.gdf[self.t_field].apply(
+            lambda t: self.convert_numeric_to_datetime(t)
+        )
 
 
-# TODO: Implement StormReportPointHandler
-# base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py?wfo%5B%5D=ALL" \
-
-def get_storm_reports(extent):
-    SRH_Buffer = []
-
+def iterative_fetch(extent, object, fetch_by = 6):
+    storm_reports = []
     min_datetime, max_datetime = extent["temporal"]
+    current_time = min_datetime
 
-    # TODO implement a reasonable way to determine how long the storm lasted
-    for i in range(0, 7):
-        d0 = min_datetime + timedelta(days=i)
-        d1 = min_datetime + timedelta(days=i + 1)
-        SRH = StormReportHandler(d0, d1)
-        SRH.cut_data_by_values(STORM_REPORT_FF_KEYS)
-        SRH.clip_spatial(extent["spatial"])
-        SRH_Buffer.append(SRH)
-    merged_SRs = pd.concat([i.gdf for i in SRH_Buffer])
-    return StormReportHandler(min_datetime, max_datetime,
-                              gdf = merged_SRs)
+    while current_time < max_datetime:
+        next_time = current_time + timedelta(hours=fetch_by + 1)
+        sr = object(current_time, next_time)
+        sr.clip_spatial(extent["spatial"])
+        storm_reports.append(sr)
+        current_time = next_time
+
+    merged_srs = pd.concat([i.gdf for i in storm_reports])
+    return object(min_datetime, max_datetime,
+                                   gdf=merged_srs)
 
 
-class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent):
+class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent, SpatialAnalytics):
 
     def __init__(self, event_name):
         self.event_name = event_name
@@ -122,6 +128,12 @@ class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent):
         g = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         g["time"] = g["time"]//100
         self.gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+
+    def prep_data(self):
+        self.gdf = self.gdf[self.gdf[self.t_field] != 0]
+        self.gdf[self.t_field] = self.gdf[self.t_field].apply(
+            lambda t: self.convert_numeric_to_datetime(t)
+        )
 
     def convert_numeric_to_datetime(self, time):
         time = str(time)
@@ -149,20 +161,19 @@ class StormDataHolder:
             "spatial": self.waze.get_spatial_extent()
         }
 
-        # self.storm_reports = get_storm_reports(self.spacetime_extent)
-        # self.storm_reports.prep_data_variables()
+        self.storm_reports = StormReportPointHandler(self.spacetime_extent["temporal"][0], self.spacetime_extent["temporal"][1])
         self.storm_warnings = StormWarningHandler(self.spacetime_extent["temporal"][0].year)
         self.storm_warnings.prep_data_variables()
         self.clip_context()
 
     def clip_context(self):
         self.storm_warnings.clip_spatial(self.extent["spatial"])
-        self.storm_reports.clip_spatial(self.extent["spatial"])
+        # self.storm_reports.clip_spatial(self.extent["spatial"])
         self.storm_warnings.clip_temporal(self.extent["temporal"][0], self.extent["temporal"][1])
-        self.storm_reports.clip_temporal(self.extent["temporal"][0], self.extent["temporal"][1])
+        # self.storm_reports.clip_temporal(self.extent["temporal"][0], self.extent["temporal"][1])
 
     def write_to_tmp(self):
-        self.storm_reports.gdf.to_file(os.path.join(self.environment, "Storm_Reports.shp"))
+        # self.storm_reports.gdf.to_file(os.path.join(self.environment, "Storm_Reports.shp"))
         self.storm_warnings.gdf.to_file(os.path.join(self.environment, "Storm_Warnings.shp"))
         self.waze.gdf.to_file(os.path.join(self.environment, self.name + "_waze.shp"))
 
@@ -196,10 +207,17 @@ class StormDataHolder:
             "Not Covered by NWS Warnings, n={}".format(str(len(waze_coverage[waze_coverage["has_overlap"] == 0]))))
         plt.show()
 
-    #TODO implement a write_to_PostGRES function
+
+# class StormReportPolygonHandler(NWSHandler):
+#   in case there's ever a reason to implement
+#     base_url = "https://mesonet.agron.iastate.edu/cgi-bin/request/gis/watchwarn.py?" \
+#                    "&{t0}&{t1}".format(t0=t0, t1=t1)
 
 
-if __name__ == "__main__":
-    for i in ["Michael", "Irma", "Harvey", "Maria"]:
-        x = StormDataHolder(i)
-        x.plot_space_time_containment()
+
+
+
+# if __name__ == "__main__":
+#     for i in ["Michael", "Irma", "Harvey", "Maria"]:
+#         x = StormDataHolder(i)
+#         x.plot_space_time_containment()

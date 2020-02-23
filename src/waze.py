@@ -37,14 +37,6 @@ WAZE_REGISTRY = [
         "spreadsheet_id": "1TFElwO-4O-PrjtcfbJBY21WWUgrPU0GNgK3nIG4Qe18"
     },
     {
-        "event": "Florence",
-        "spreadsheet_id": "17LdrScaeiiZJPx8rc3in4QBf223ZaO8rDApRPK_20jc"
-    },
-    {
-        "event": "WS Grayson",
-        "spreadsheet_id": "1C-HUUUJmqW3sYpUazc5P_5i8yNkwLLPl72QVcL6wjMU"
-    },
-    {
         "event": "Nate",
         "spreadsheet_id": "1C8OoVwJoBjCgV2CvOMOVDxixOp7mzxgrqsyq332r3m0"
     },
