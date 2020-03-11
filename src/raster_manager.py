@@ -1,4 +1,4 @@
-from configuration import RASTER_DIR, TMP_DIR
+from configuration import config
 import os.path
 from owslib.wcs import WebCoverageService
 import rasterio
@@ -11,13 +11,12 @@ from utils import get_tmp_path
 from shapely.geometry import mapping
 
 
-'''Starting work on a straightforward OWSLib/Rasterio wrapper for accessing raster data.
-For more information, see https://geopython.github.io/OWSLib/'''
+"""
+OWSLib/Rasterio wrapper for common functionality.
+This will be used if the project ends up requiring Social Vulnerability Indices or DEM data.
 
-# TODO:
-# Plotting functionality should move to its own thing
-# Add bounding boxes to the VectorRasterAssociation
-# Start work on color bars and legends
+Still in progress, code not yet clean.
+"""
 
 
 class VectorRasterAssociation:
@@ -88,7 +87,7 @@ class WCSWrapper:
         bbox = layer_to_use.boundingBoxWGS84
         response = wcs.getCoverage(identifier=layer, bbox=bbox, format='GeoTIFF',
                                    crs=self.crs, resx=res, resy=res)
-        tmp_path = os.path.join(RASTER_DIR, "tmp_" + str(int(time.time()*100)) + ".tif")
+        tmp_path = os.path.join(config.tmp, "tmp_" + str(int(time.time()*100)) + ".tif")
         with open(tmp_path, 'wb') as file:
             file.write(response.read())
 

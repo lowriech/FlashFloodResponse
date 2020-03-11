@@ -8,9 +8,17 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import time
 from datetime import datetime
+from configuration import config
+from AbstractXYTFunctionality.AbstractXYTFunc import AbstractGeoHandler, AbstractTimePointEvent
+import pandas as pd
+import geopandas as gpd
 
-'''This script parses raw Waze data from different prominent storms.
-Data was initially supplied for specific storms, but the end goal will be to live-stream Waze reports.'''
+"""
+This script parses raw Waze data from different prominent storms.
+Waze data is supplied by the Waze VEOC in Google Sheets form.
+It is not very internally consistent, which results in some decisions on how to parse it.
+Most of the code follows Google's example API documentation:
+- https://developers.google.com/sheets/api/quickstart/python"""
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
@@ -54,19 +62,19 @@ WAZE_REGISTRY = [
     }
 ]
 
-def getWazeData(SPREADSHEET_ID = '1yeIgD2Dzb9TumUGLfixaVkdU_wU_lIB8_altNzVpxmY',
-                RANGE_NAMES=['FormResponses!Q6:Q', 'FormResponses!T6:T']):
-    """Shows basic usage of the Sheets API.
-    Prints values from a sample spreadsheet.
+
+def get_waze_from_google_sheets(spreadsheet_id='1yeIgD2Dzb9TumUGLfixaVkdU_wU_lIB8_altNzVpxmY',
+                                range_names=('FormResponses!Q6:Q', 'FormResponses!T6:T')):
+    """
+    Fetch the Waze data from Google Sheets.
+    This function follows closely with the example found here:
+    - https://developers.google.com/sheets/api/quickstart/python
     """
     creds = None
-    # The file token.pickle stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    # If there are no (valid) credentials available, let the user log in.
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -74,24 +82,22 @@ def getWazeData(SPREADSHEET_ID = '1yeIgD2Dzb9TumUGLfixaVkdU_wU_lIB8_altNzVpxmY',
             flow = InstalledAppFlow.from_client_secrets_file(
                 'client_secret.json', SCOPES)
             creds = flow.run_local_server(host='localhost',
-                                                port=8080,
-                                                authorization_prompt_message='Please visit this URL: {url}',
-                                                success_message='The auth flow is complete; you may close this window.',
-                                                open_browser=True)
-        # Save the credentials for the next run
+                                          port=8080,
+                                          authorization_prompt_message='Please visit this URL: {url}',
+                                          success_message='The auth flow is complete; you may close this window.',
+                                          open_browser=True)
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
 
     service = build('sheets', 'v4', credentials=creds)
-
-    # Call the Sheets API
     sheet = service.spreadsheets()
-
-    result = sheet.values().batchGet(spreadsheetId=SPREADSHEET_ID,
-                                     ranges=RANGE_NAMES).execute()
+    result = sheet.values().batchGet(spreadsheetId=spreadsheet_id,
+                                     ranges=range_names).execute()
     return result
 
-def parseUrlList(unparsed_list):
+
+def parse_url_list(unparsed_list):
+    """Parse URLs returned as a column from the Waze Sheets"""
     url_list = []
     for url in unparsed_list:
         if len(url) > 0:
@@ -100,7 +106,11 @@ def parseUrlList(unparsed_list):
             url_list.append("")
     return url_list
 
-def parseTimeList(unparsed_list):
+
+def parse_time_list(unparsed_list):
+    """Parse the time column for information.
+    Unfortunately the patterns aren't consistent, and currently we're handling that by checking for
+    multiple time patterns."""
     time_list = []
     patterns = ['%m/%d/%Y %H:%M:%S',
                 '%m/%d/%y %H:%M:%S',
@@ -111,7 +121,6 @@ def parseTimeList(unparsed_list):
             t = "NONE"
             for p in patterns:
                 try:
-                    #t = time.mktime(time.strptime(timestring[0], p))
                     t = time.strptime(timestring[0], p)
                     t = datetime.fromtimestamp(time.mktime(t))
                     break
@@ -133,11 +142,17 @@ def parseTimeList(unparsed_list):
             time_list.append("0")
     return time_list
 
-def parseRawWazeData(data):
+
+def parse_raw_waze_data(data):
+    """
+    Parse and format the raw values returned by Waze.
+    Unfortunately the data is not well formatted.  The most consistent data comes from the URLs supplied,
+    hence we create x,y points by parsing those URLs.
+    """
     return_buffer = []
     x = [col['values'] for col in data['valueRanges']]
-    url_list = parseUrlList(x[0])
-    time_list = parseTimeList(x[1])
+    url_list = parse_url_list(x[0])
+    time_list = parse_time_list(x[1])
     intermediate_list = list(zip(url_list, time_list))
 
     for i in intermediate_list:
@@ -154,12 +169,58 @@ def parseRawWazeData(data):
             pass
     return return_buffer
 
-def fetchAllWaze(local_data_path):
+
+def fetch_all_waze_to_local(root):
+    """Fetch all Waze VEOC sheets to local file system."""
     for event in WAZE_REGISTRY:
-        with open(local_data_path + "waze/waze_" + event["event"] + ".txt", "w") as out_file:
+        file_name = event["event"] + ".txt"
+        waze_path = os.path.join(root, file_name)
+        with open(waze_path, "w") as out_file:
             out_file.write(",".join(["lat", "lon", "time", "event"]) + "\n")
-            x = getWazeData(SPREADSHEET_ID=event["spreadsheet_id"])
-            x = parseRawWazeData(x)
+            x = get_waze_from_google_sheets(spreadsheet_id=event["spreadsheet_id"])
+            x = parse_raw_waze_data(x)
             for i in x:
                 out_file.write(",".join([i["lat"], i["lon"], i["time"], event["event"]])+"\n")
 
+
+class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent):
+
+    t_field: str = "time"
+    home_dir: str = config.waze
+
+    def __init__(self, event_name):
+        self.event_name = event_name
+        AbstractGeoHandler.__init__(self, gdf=self.get_gdf())
+
+    def get_gdf(self):
+        """Get the Waze GDF from the .txt files pulled from Google Sheets"""
+        from shapely.geometry import Point
+        csv = os.path.join(self.home_dir, "waze_" + self.event_name + ".txt")
+        df = pd.read_csv(csv)
+        print(df)
+        gdf = gpd.GeoDataFrame(
+            df.drop(columns=['lon', 'lat']),
+            crs={'init': 'epsg:4326'},
+            geometry=[Point(xy) for xy in zip(df.lon, df.lat)]
+        )
+        gdf["time"] = gdf["time"]//100
+        return gdf
+
+    def prep_data(self):
+        self.gdf = self.gdf[self.gdf[self.t_field] != 0]
+        self.gdf[self.t_field] = self.gdf[self.t_field].apply(
+            lambda t: self.convert_numeric_to_datetime(t)
+        )
+
+    @staticmethod
+    def convert_numeric_to_datetime(time):
+        time = str(time)
+        return datetime(int(time[0:4]),
+                        int(time[4:6]),
+                        int(time[6:8]),
+                        int(time[8:10]),
+                        int(time[10:12]))
+
+
+if __name__ == "__main__":
+    fetch_all_waze_to_local(config.waze)
