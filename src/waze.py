@@ -9,7 +9,7 @@ from google.auth.transport.requests import Request
 import time
 from datetime import datetime
 from configuration import config
-from AbstractXYTFunctionality.AbstractXYTFunc import AbstractGeoHandler, AbstractTimePointEvent
+from spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
 import pandas as pd
 import geopandas as gpd
 

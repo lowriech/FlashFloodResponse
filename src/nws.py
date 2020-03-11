@@ -1,6 +1,6 @@
 import os.path
 from datetime import datetime, timedelta
-from AbstractXYTFunctionality.AbstractXYTFunc import *
+from spacetime.spacetime_handlers import *
 from configuration import *
 from spatial_analytics import *
 from utils import *

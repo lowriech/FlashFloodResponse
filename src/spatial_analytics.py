@@ -1,5 +1,5 @@
 """For spatial analytics functionality that works on AbstractGeoHandlers"""
-from AbstractXYTFunctionality.AbstractXYTFunc import AbstractGeoHandler, AbstractTimePointEvent
+from spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
 import pandas as pd
 import geopandas as gpd
 
