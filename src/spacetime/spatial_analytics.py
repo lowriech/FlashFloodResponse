@@ -1,14 +1,15 @@
-"""For spatial analytics functionality that works on AbstractGeoHandlers"""
-from spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
+from src.spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
 import pandas as pd
 import geopandas as gpd
 
 
-class SpatialStatistics:
+class SpaceTimePointStatistics:
     """
     Code for implementing spatial statistics.
     Children of AbstractGeoHandler can inherit from this class to add statistical functionality.
     """
+    t_field: str = None
+    gdf: gpd.GeoDataFrame = None
 
     def k_function(self):
         """SOURCE:
@@ -78,6 +79,30 @@ class SpatialStatistics:
             t[i] = other_t.apply(lambda a: abs(a - self_t[i]))
         return t
 
+    def spacetime_cube(self):
+        from mpl_toolkits.mplot3d import Axes3D
+        import matplotlib.pyplot as plt
+        threedee = plt.figure().gca(projection='3d')
+        threedee.scatter(self.gdf.geometry.x, self.gdf.geometry.y, self.gdf[self.t_field].apply(lambda x: x.timestamp()))
+        threedee.set_xlabel('X')
+        threedee.set_ylabel('Y')
+        threedee.set_zlabel('T')
+        return threedee
+
+    def add_self_to_spacetime_cube(self, figure):
+        figure.scatter(self.gdf.geometry.x, self.gdf.geometry.y, self.gdf[self.t_field].apply(lambda x: x.timestamp()))
+        return figure
+
+    @staticmethod
+    def distance_to_n_points_by_observation(distance_matrix, n):
+        """
+        Return a Series representing the distances to include n points for a distance matrix
+        :param distance_matrix:
+        :param n:
+        :return: Series
+        """
+        return distance_matrix.quantile(float(n) / distance_matrix.shape[0])
+
 
 class SpaceTimeContainment:
     """
@@ -129,7 +154,7 @@ class SpaceTimeContainment:
         return time_point_handler.gdf.join(z)
 
     @staticmethod
-    def count_points_per_geography(polygon_handler, point_handler, collect_on = None):
+    def count_points_per_geography(polygon_handler, point_handler, collect_on=None):
         """Count the number of points contained per polygonal geography.
         Also returns a collected list of a field, if specified."""
         z = gpd.sjoin(polygon_handler.gdf, point_handler.gdf, how="left", op="intersects")

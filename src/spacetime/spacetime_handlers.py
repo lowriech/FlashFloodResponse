@@ -1,7 +1,5 @@
 import geopandas as gpd
-import pandas as pd
 import os.path
-from spatial_analytics import *
 
 
 class AbstractTimePointEvent:
@@ -164,6 +162,3 @@ class DataManager(AbstractGeoHandler):
         with open(file_path, "wb") as file:
             r = requests.get(self.construct_url())
             file.write(r.content)
-
-
-

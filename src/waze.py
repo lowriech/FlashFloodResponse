@@ -8,8 +8,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import time
 from datetime import datetime
-from configuration import config
-from spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
+from src.configuration import config
+from src.spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
 import pandas as pd
 import geopandas as gpd
 

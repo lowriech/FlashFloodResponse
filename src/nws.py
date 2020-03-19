@@ -1,9 +1,9 @@
 import os.path
 from datetime import datetime, timedelta
-from spacetime.spacetime_handlers import *
-from configuration import *
-from spatial_analytics import *
-from utils import *
+from src.spacetime.spacetime_handlers import *
+from src.configuration import *
+from src.spacetime.spatial_analytics import SpaceTimePointStatistics
+from src.utils import *
 
 
 class IowaEnvironmentalMesonet:
@@ -67,7 +67,7 @@ class StormWarningHandler(IowaEnvironmentalMesonet, DataManager, AbstractTimeDur
         )
 
 
-class LocalStormReportHandler(IowaEnvironmentalMesonet, DataManager, AbstractTimePointEvent, SpatialAnalytics):
+class LocalStormReportHandler(IowaEnvironmentalMesonet, DataManager, AbstractTimePointEvent, SpaceTimePointStatistics):
     """Handler for Local Storm Report Points"""
 
     t_field: str = "valid"
