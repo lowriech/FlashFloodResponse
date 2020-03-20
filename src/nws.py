@@ -2,7 +2,7 @@ import os.path
 from datetime import datetime, timedelta
 from src.spacetime.spacetime_handlers import *
 from src.configuration import *
-from src.spacetime.spatial_analytics import SpaceTimePointStatistics
+from src.spacetime.spacetime_analytics import SpaceTimePointStatistics
 from src.utils import *
 
 

@@ -76,21 +76,35 @@ class SpaceTimePointStatistics:
         other_t = other.gdf[other.t_field]
         t = pd.DataFrame(columns=self_t.index, index=other_t.index)
         for i in self_t.index:
-            t[i] = other_t.apply(lambda a: abs(a - self_t[i]))
+            t[i] = other_t.apply(lambda a: a - self_t[i])
         return t
 
     def spacetime_cube(self):
         from mpl_toolkits.mplot3d import Axes3D
         import matplotlib.pyplot as plt
         threedee = plt.figure().gca(projection='3d')
-        threedee.scatter(self.gdf.geometry.x, self.gdf.geometry.y, self.gdf[self.t_field].apply(lambda x: x.timestamp()))
+        if isinstance(self.gdf, pd.DataFrame):
+            threedee.scatter(
+                self.gdf.geometry.x, self.gdf.geometry.y, self.gdf[self.t_field].apply(lambda x: x.timestamp())
+            )
+        elif isinstance(self.gdf, pd.Series):
+            threedee.scatter(
+                self.gdf.geometry.x, self.gdf.geometry.y, self.gdf.loc[self.t_field].timestamp()
+            )
         threedee.set_xlabel('X')
         threedee.set_ylabel('Y')
         threedee.set_zlabel('T')
         return threedee
 
     def add_self_to_spacetime_cube(self, figure):
-        figure.scatter(self.gdf.geometry.x, self.gdf.geometry.y, self.gdf[self.t_field].apply(lambda x: x.timestamp()))
+        if isinstance(self.gdf, pd.DataFrame):
+            figure.scatter(
+                self.gdf.geometry.x, self.gdf.geometry.y, self.gdf[self.t_field].apply(lambda x: x.timestamp())
+            )
+        elif isinstance(self.gdf, pd.Series):
+            figure.scatter(
+                self.gdf.geometry.x, self.gdf.geometry.y, self.gdf.loc[self.t_field].timestamp()
+            )
         return figure
 
     @staticmethod
@@ -101,7 +115,7 @@ class SpaceTimePointStatistics:
         :param n:
         :return: Series
         """
-        return distance_matrix.quantile(float(n) / distance_matrix.shape[0])
+        return distance_matrix[distance_matrix.rank() <= float(n)].max()
 
 
 class SpaceTimeContainment:

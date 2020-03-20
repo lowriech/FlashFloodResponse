@@ -10,6 +10,7 @@ import time
 from datetime import datetime
 from src.configuration import config
 from src.spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
+from src.spacetime.spacetime_analytics import SpaceTimePointStatistics
 import pandas as pd
 import geopandas as gpd
 
@@ -183,7 +184,7 @@ def fetch_all_waze_to_local(root):
                 out_file.write(",".join([i["lat"], i["lon"], i["time"], event["event"]])+"\n")
 
 
-class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent):
+class WazeHandler(AbstractGeoHandler, AbstractTimePointEvent, SpaceTimePointStatistics):
 
     t_field: str = "time"
     home_dir: str = config.waze
