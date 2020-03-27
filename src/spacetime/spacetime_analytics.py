@@ -1,6 +1,7 @@
 from src.spacetime.spacetime_handlers import AbstractGeoHandler, AbstractTimePointEvent
 import pandas as pd
 import geopandas as gpd
+import numpy as np
 
 
 class SpaceTimePointStatistics:
@@ -117,6 +118,17 @@ class SpaceTimePointStatistics:
         """
         return distance_matrix[distance_matrix.rank() <= float(n)].max()
 
+    @staticmethod
+    def add_reference_circle(figure, r, x0, y0, z0):
+        theta = np.linspace(0, 2*np.pi, 100)
+        z = np.ones(100) * z0
+        x = x0 + r*np.sin(theta)
+        y = y0 + .85*r*np.cos(theta)
+        figure.plot(x, y, z)
+        figure.text(x0+r, y0-r, z0, s="r = {} m".format(str(int(r))), zdir=(1, 1, 0), fontsize='small',
+                    horizontalalignment='center')
+        return figure
+
 
 class SpaceTimeContainment:
     """
@@ -198,9 +210,4 @@ def get_equidistant_dataframe(gdf):
           'UNIT["Meter",1]]'
     cc = CRS(wkt)
     return gdf.to_crs(cc)
-
-
-
-
-
 

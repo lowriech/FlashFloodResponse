@@ -121,7 +121,9 @@ class AbstractGeoHandler:
 
 
 class DataManager(AbstractGeoHandler):
-    """Manages data access between local and remote sources"""
+    """Manages data access between local and remote sources.
+    Eventually this will be built into a separate module, along with drivers.
+    Currently just supports remote fetching a geojson."""
     construct_local_identifier = None
     construct_url = None
     home_dir: str = None
