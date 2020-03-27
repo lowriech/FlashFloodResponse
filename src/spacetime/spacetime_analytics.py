@@ -4,6 +4,8 @@ import geopandas as gpd
 import numpy as np
 
 
+# TODO: create a plotting class, Abstraction of Matplotlib
+
 class SpaceTimePointStatistics:
     """
     Code for implementing spatial statistics.

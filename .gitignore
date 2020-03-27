@@ -1,6 +1,7 @@
 # ignore a single file
 src/client_secret.json
 src/configuration.py
+src/token.pickle
 .idea
 spring2020_ff_internship_lowrie.pages
 spring2020_ff_internship_lowrie.pdf
