@@ -75,6 +75,7 @@ class SpaceTimePointStatistics:
     def bivariate_temporal_distance_matrix(self, other):
         """Create a bivariate, m by n temporal distance matrix
         Columns are from this dataframe, rows/index are from 'other'"""
+        # TODO there is undoubtedly a faster way to do this
         self_t = self.gdf[self.t_field]
         other_t = other.gdf[other.t_field]
         t = pd.DataFrame(columns=self_t.index, index=other_t.index)

@@ -5,6 +5,7 @@ src/token.pickle
 .idea
 spring2020_ff_internship_lowrie.pages
 spring2020_ff_internship_lowrie.pdf
+run.py
 
 # ignore an entire directory
 /data/
