@@ -70,7 +70,7 @@ ptyprocess==0.6.0
 pyasn1==0.4.7
 pyasn1-modules==0.2.6
 PyCRS==1.0.1
-Pygments==2.5.2
+Pygments==2.7.4
 pylint==2.4.4
 pyparsing==2.4.2
 pyproj==2.3.1
